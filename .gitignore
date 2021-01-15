@@ -1,0 +1,5 @@
+*.o
+parser.cc
+parser.hh
+lexer.cc
+kompilator
