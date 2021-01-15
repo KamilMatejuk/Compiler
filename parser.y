@@ -3,24 +3,33 @@ using namespace std;
 }
 %{
 
+/*
+*********************************************************************
+**************** declarations of methods and objects ****************
+*********************************************************************
+*/
+
+#include "union_classes.h"
 #include <iostream>
 #include <string.h>
 #include <vector>
 #include <algorithm>
+#include <stack>
 using namespace std;
 
 extern int yylineno;
-// result
-vector<string> machine_code;
-// methods
-int yylex(void);
-void yyset_in(FILE * in_str);
-void yyerror(char const *s);
-void check_if_declared(char* name);
-void check_if_initialized(char* name);
-void declare_variable_int(char* name);
-void declare_variable_array(char* name, int start, int end);
-void show_vars_array(); // temporary
+long long memmoryOffset = 0;
+long long outputCommandsSize = 0;
+long long whileCommandsDecreaser = 0;
+vector<string> machine_code;            // created machine code
+
+stack<long long> doWhileJumpStack;
+stack<long long> whileJumpStack;
+stack<long long> ifJumpStack;
+stack<long long> forJumpStack;
+stack<char*> iteratorNamesStack;
+stack<string> iteratorRegisterNamesStack;
+
 // variables in program
 struct var {
     var(): name_in_code(""), name_rejestr(""), initialized(false), scope_start(0), scope_end(0) {}
@@ -33,10 +42,44 @@ struct var {
 };
 vector<var> vars;
 
+// possible errors
+enum errors {
+    BadArrayScope,      // error 0
+    AlreadyDeclaredVar, // error 1
+    UndeclaredVar,      // error 2, 8
+    UninitializedVar,   // error 3, 5
+    BadVarType,          // error 6, 7
+    UnrecognizedText,   // error 4
+};
+
+// methods
+int  yylex(void);
+void yyset_in(FILE * in_str);
+void yyerror(char const *s);
+void err(errors e, char* var);
+bool is_declared(char* name);
+bool is_initialized(char* name);
+void declare_variable_int(char* name);
+void declare_variable_array(char* name, int start, int end);
+void initialize_variable_int(char* name);
+void initialize_variable_array(char* name, int index);
+void read(class_identifier id);
+void show_vars_array(); // temporary
+
+
+
+
+/*
+********************************************************************* 
+******************************** parser *****************************
+*********************************************************************
+*/
+
 %}
 %union {
     char*   strval;
     long     ival;
+    class_identifier* identifier;
 }
 
 %token <strval> T_PIDENTIFIER
@@ -81,6 +124,8 @@ vector<var> vars;
 %token T_ENDFOR "ENDFOR"
 %token T_READ "READ"
 %token T_WRITE "WRITE"
+
+%type <identifier> identifier
 
 %%
 input:
@@ -149,7 +194,7 @@ command:
     }
     | "READ" identifier ";" {
         // STORE value of var $2, if exists
-        // check $2 as initialized
+        read(*$2);
         machine_code.push_back("16");
     }
     | "WRITE" value ";" {
@@ -208,22 +253,62 @@ value:
 identifier:
     T_PIDENTIFIER {
         // nothing
+        $$ = new class_identifier($1);
         machine_code.push_back("32");
     }
     | T_PIDENTIFIER "(" T_PIDENTIFIER ")" {
+        $$ = new class_identifier($1, $3);
         machine_code.push_back("33");
     }
     | T_PIDENTIFIER "(" T_NUM ")" {
+        $$ = new class_identifier($1, $3);
         machine_code.push_back("34");
     }
 
 %%
+
+/*
+*********************************************************************
+****************** body of methods used in parser *******************
+*********************************************************************
+*/
+
 void yyerror(char const *s){
-    cerr << "Linia " << yylineno << ": " << s << endl;
+    if(s == "syntax error"){
+        s = "Unrecognisable text";
+    }
+    cerr << "\nLine " << yylineno << ": " << s << endl;
     exit(-1);
 }
 
+void err(errors e, char* var){
+    string err = "";
+    switch(e){
+        case BadArrayScope:
+            break;
+        case AlreadyDeclaredVar:
+            err = "Multiple declarations of variable '" + (string)var + "'";
+            break;
+        case UndeclaredVar:
+            err = "Undeclared variable '" + (string)var + "'";
+            break;
+        case UninitializedVar:
+            err = "Undinitialized variable '" + (string)var + "'";
+            break;
+        case BadVarType:
+            err = "Wrong usage of variable '" + (string)var + "' according to its type";
+            break;
+        case UnrecognizedText:
+        default:
+            err = "Couldn't recognise text '" + (string)var + "'";
+            break;
+    }
+    yyerror(err.c_str());
+}
+
 vector<string> run_parser(FILE * data){
+    machine_code.push_back("RESET a");
+
     yyset_in(data);
     yyparse();
 
@@ -246,56 +331,36 @@ void show_vars_array(){
 
 
 /* check if variable of given name was previously declared */
-void check_if_declared(char* name){
+bool is_declared(char* name){
     for(var v : vars) {
         if(v.name_in_code == name){
-            string err = "Variable '" + (string)name + "' already declared";
-            char err_array[50];
-            strcpy(err_array, err.c_str());
-            yyerror(err_array);
+            return true;
         }
     }
+    return false;
 }
 
 /* check if variable of given name was already initialized */
-void check_if_initialized(char* name){
+bool is_initialized(char* name){
     for(var v : vars) {
         if(v.name_in_code == name){
-            if(!v.initialized){
-                string err = "Variable '" + (string)name + "' wasn't initialized yet";
-                char err_array[50];
-                strcpy(err_array, err.c_str());
-                yyerror(err_array);
-            }
+            return v.initialized;
         }
     }
+    return false;
 }
 
 
 /* check if the name is not taken, and add int variable into table */
 void declare_variable_int(char* name){
     /* not used name */
-    check_if_declared(name);
-    /* free memory rejestr slot */
-    vector<string> all {"a", "b", "c", "d", "e", "f"};
-    vector<string> taken;
-    for(var v : vars) {
-        taken.push_back(v.name_rejestr);
+    if(is_declared(name)){
+        err(errors::AlreadyDeclaredVar, name);
     }
-    for (string a : all){
-        if(find(taken.begin(), taken.end(), a) == taken.end()){
-            struct var temp_v;
-            temp_v.name_in_code = name;
-            temp_v.name_rejestr = a;
-            temp_v.var_types = var::integer;
-            vars.push_back(temp_v);
-            return;
-        }
-    }
-    string err = "Not enough rejestr slots {a,b,c,d,e,f} for creating variable '" + (string)name + "'";
-    char err_array[100];
-    strcpy(err_array, err.c_str());
-    yyerror(err_array);
+    struct var temp_v;
+    temp_v.name_in_code = name;
+    temp_v.var_types = var::integer;
+    vars.push_back(temp_v);
 }
 
 
@@ -303,15 +368,20 @@ void declare_variable_int(char* name){
 void declare_variable_array(char* name, int start, int end){
     /* correct scope */
     if(start >= end){
-        string err = "Trying to declare variable '" + (string)name + "', start of scope (" + to_string(start) + ") cannot be bigger then the end (" + to_string(end) + ")";
-        char err_array[100];
-        strcpy(err_array, err.c_str());
-        yyerror(err_array);
+        err(errors::BadArrayScope, name);
     }
     /* not used name */
-    check_if_declared(name);
+    if(is_declared(name)){
+        err(errors::AlreadyDeclaredVar, name);
+    }
+    struct var temp_v;
+    temp_v.name_in_code = name;
+    temp_v.var_types = var::array;
+    temp_v.scope_start = start;
+    temp_v.scope_end = end;
+    vars.push_back(temp_v);
     /* free memory rejestr slot */
-    vector<string> all {"a", "b", "c", "d", "e", "f"};
+    /* vector<string> all {"a", "b", "c", "d", "e", "f"};
     vector<string> taken;
     for(var v : vars) {
         taken.push_back(v.name_rejestr);
@@ -331,13 +401,57 @@ void declare_variable_array(char* name, int start, int end){
     string err = "Not enough rejestr slots {a,b,c,d,e,f} for creating variable '" + (string)name + "'";
     char err_array[100];
     strcpy(err_array, err.c_str());
-    yyerror(err_array);
+    yyerror(err_array); */
 }
 
 
-/* 
-TODO:
-    dodać osobne metody do każdego błędu
-    napisać resztę metod
-    ogarnąć jak to się robi
-*/
+/* check if is declared, if type is correct and change to initialized */
+void initialize_variable_int(char* name){
+    /* not used name */
+    if(!is_declared(name)){
+        err(errors::UndeclaredVar, name);
+    }
+    for(var v : vars) {
+        if(v.name_in_code == name){
+            if(v.var_types != var::integer){
+                err(errors::BadVarType, name);
+            }
+            v.initialized = true;
+        }
+    }
+}
+
+/* check if is declared, if type and scope is correct and change to initialized */
+void initialize_variable_array(char* name, int index){
+    /* not used name */
+    if(!is_declared(name)){
+        err(errors::UndeclaredVar, name);
+    }
+    for(var v : vars) {
+        if(v.name_in_code == name){
+            if(v.var_types != var::array){
+                err(errors::BadVarType, name);
+            }
+            if(index < v.scope_start || index > v.scope_end){
+                err(errors::BadArrayScope, name);
+            }
+            v.initialized = true;
+        }
+    }
+}
+
+
+/* check if declared, if type correct and store value */
+void read(class_identifier id){
+    switch(id.type){
+        case class_identifier::id:
+            initialize_variable_int(id.var_name);
+            break;
+        case class_identifier::array_with_var:
+            initialize_variable_array(id.var_name, 0); // TODO
+            break;
+        case class_identifier::array_with_num:
+            initialize_variable_array(id.var_name, id.num_index);
+            break;
+    }
+}

@@ -2,6 +2,7 @@
 %option yylineno
 %option nounput
 %{
+#include "union_classes.h"
 #include "parser.hh"
 #include <iostream>
 
