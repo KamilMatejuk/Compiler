@@ -16,6 +16,8 @@ vector<string> machine_code;
 int yylex(void);
 void yyset_in(FILE * in_str);
 void yyerror(char const *s);
+void check_if_declared(char* name);
+void check_if_initialized(char* name);
 void declare_variable_int(char* name);
 void declare_variable_array(char* name, int start, int end);
 void show_vars_array(); // temporary
@@ -205,6 +207,7 @@ value:
 
 identifier:
     T_PIDENTIFIER {
+        // nothing
         machine_code.push_back("32");
     }
     | T_PIDENTIFIER "(" T_PIDENTIFIER ")" {
@@ -242,11 +245,8 @@ void show_vars_array(){
 }
 
 
-/* check if the name is not taken, and add int variable into table */
-void declare_variable_int(char* name){
-    vector<string> all {"a", "b", "c", "d", "e", "f"};
-    vector<string> taken;
-    /* not used name */
+/* check if variable of given name was previously declared */
+void check_if_declared(char* name){
     for(var v : vars) {
         if(v.name_in_code == name){
             string err = "Variable '" + (string)name + "' already declared";
@@ -254,9 +254,34 @@ void declare_variable_int(char* name){
             strcpy(err_array, err.c_str());
             yyerror(err_array);
         }
+    }
+}
+
+/* check if variable of given name was already initialized */
+void check_if_initialized(char* name){
+    for(var v : vars) {
+        if(v.name_in_code == name){
+            if(!v.initialized){
+                string err = "Variable '" + (string)name + "' wasn't initialized yet";
+                char err_array[50];
+                strcpy(err_array, err.c_str());
+                yyerror(err_array);
+            }
+        }
+    }
+}
+
+
+/* check if the name is not taken, and add int variable into table */
+void declare_variable_int(char* name){
+    /* not used name */
+    check_if_declared(name);
+    /* free memory rejestr slot */
+    vector<string> all {"a", "b", "c", "d", "e", "f"};
+    vector<string> taken;
+    for(var v : vars) {
         taken.push_back(v.name_rejestr);
     }
-    /* free memory rejestr slot */
     for (string a : all){
         if(find(taken.begin(), taken.end(), a) == taken.end()){
             struct var temp_v;
@@ -276,8 +301,6 @@ void declare_variable_int(char* name){
 
 /* check if the name is not taken, and add array variable into table */
 void declare_variable_array(char* name, int start, int end){
-    vector<string> all {"a", "b", "c", "d", "e", "f"};
-    vector<string> taken;
     /* correct scope */
     if(start >= end){
         string err = "Trying to declare variable '" + (string)name + "', start of scope (" + to_string(start) + ") cannot be bigger then the end (" + to_string(end) + ")";
@@ -286,16 +309,13 @@ void declare_variable_array(char* name, int start, int end){
         yyerror(err_array);
     }
     /* not used name */
+    check_if_declared(name);
+    /* free memory rejestr slot */
+    vector<string> all {"a", "b", "c", "d", "e", "f"};
+    vector<string> taken;
     for(var v : vars) {
-        if(v.name_in_code == name){
-            string err = "Variable '" + (string)name + "' already declared";
-            char err_array[50];
-            strcpy(err_array, err.c_str());
-            yyerror(err_array);
-        }
         taken.push_back(v.name_rejestr);
     }
-    /* free memory rejestr slot */
     for (string a : all){
         if(find(taken.begin(), taken.end(), a) == taken.end()){
             struct var temp_v;
@@ -313,3 +333,11 @@ void declare_variable_array(char* name, int start, int end){
     strcpy(err_array, err.c_str());
     yyerror(err_array);
 }
+
+
+/* 
+TODO:
+    dodać osobne metody do każdego błędu
+    napisać resztę metod
+    ogarnąć jak to się robi
+*/

@@ -3,3 +3,4 @@ parser.cc
 parser.hh
 lexer.cc
 kompilator
+test.mr
