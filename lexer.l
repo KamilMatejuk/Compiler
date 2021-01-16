@@ -2,9 +2,13 @@
 %option yylineno
 %option nounput
 %{
-#include "union_classes.h"
-#include "parser.hh"
+// #include "variables.h"
+// #include "errors.h"
 #include <iostream>
+#include <string.h>
+#include <string>
+#include "parser.hh"
+using namespace std;
 
 int yylex();
 %}
@@ -12,8 +16,17 @@ int yylex();
 \[([^\)]|\n)*\] ;
 [ \t\n]+        ;
 
-[_a-z]+         { yylval.strval = strdup(yytext); return T_PIDENTIFIER; };
-\-?[0-9]+       { yylval.ival = atoi(yytext); return T_NUM; };
+[_a-z]+         {
+                    yylval = strdup(yytext);
+                    // yylval.str = strdup(yytext);
+                    return T_PIDENTIFIER;
+                };
+\-?[0-9]+       {
+                    yylval = strdup(yytext);
+                    // yylval.str = strdup(yytext);
+                    // yylval.num = atoi(yytext);
+                    return T_NUM;
+                };
 
 ":="            { return T_ASSIGN; };
 

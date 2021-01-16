@@ -4,7 +4,7 @@ FLAGS = -W -pedantic -std=c++17 -O3
 
 all: kompilator
 
-kompilator: lexer.o parser.o main.o
+kompilator: errors.h variables.h lexer.o parser.o main.o
 	$(CXX) $^ -o $@
 	strip $@
 

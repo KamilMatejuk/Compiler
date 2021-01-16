@@ -1,4 +1,6 @@
 %code requires {
+// #include "variables.h"
+// #include "errors.h"
 using namespace std;
 }
 %{
@@ -9,65 +11,49 @@ using namespace std;
 *********************************************************************
 */
 
-#include "union_classes.h"
-#include <iostream>
-#include <string.h>
-#include <vector>
+
 #include <algorithm>
+#include <iostream>
+#include <sstream>
+#include <string.h>
+#include <string>
+#include <vector>
 #include <stack>
+#include "variables.h"
+#include "errors.h"
 using namespace std;
 
 extern int yylineno;
-long long memmoryOffset = 0;
-long long outputCommandsSize = 0;
-long long whileCommandsDecreaser = 0;
-vector<string> machine_code;            // created machine code
-
-stack<long long> doWhileJumpStack;
-stack<long long> whileJumpStack;
-stack<long long> ifJumpStack;
-stack<long long> forJumpStack;
-stack<char*> iteratorNamesStack;
-stack<string> iteratorRegisterNamesStack;
-
-// variables in program
-struct var {
-    var(): name_in_code(""), name_rejestr(""), initialized(false), scope_start(0), scope_end(0) {}
-    string name_in_code;
-    string name_rejestr;
-    bool initialized;
-    enum { integer, array } var_types;
-    int scope_start;
-    int scope_end;
-};
-vector<var> vars;
-
-// possible errors
-enum errors {
-    BadArrayScope,      // error 0
-    AlreadyDeclaredVar, // error 1
-    UndeclaredVar,      // error 2, 8
-    UninitializedVar,   // error 3, 5
-    BadVarType,          // error 6, 7
-    UnrecognizedText,   // error 4
-};
+vector<var> vars;           // list of declared variables
+long long memmoryIterator = 0; // starting index of used memmory slots
+string machine_code;        // created machine code
 
 // methods
+extern void err(errors e, string var);
+
 int  yylex(void);
 void yyset_in(FILE * in_str);
 void yyerror(char const *s);
-void err(errors e, char* var);
-bool is_declared(char* name);
-bool is_initialized(char* name);
-void declare_variable_int(char* name);
-void declare_variable_array(char* name, int start, int end);
-void initialize_variable_int(char* name);
-void initialize_variable_array(char* name, int index);
-void read(class_identifier id);
-void show_vars_array(); // temporary
+bool is_declared(string name);
+bool is_iterator(string name);
+void remove_iterator(string name);
+bool is_initialized(string name);
+void initialize_variable(string name);
+void declare_variable_int(string name);
+void declare_variable_array(string name, int start, int end);
 
+string get_variable_to_rejestr(string name, char rejestr);
+string save_variable_to_memmory(string name, char rejestr1, char rejestr2);
 
+string add_ASM(char rejestr1, char rejestr2);
+string substract_ASM(char rejestr1, char rejestr2);
+string multiply_ASM(char rejestr1, char rejestr2);
+string divide_ASM(char rejestr1, char rejestr2);
+string modulo_ASM(char rejestr1, char rejestr2);
+string create_constant_ASM(int value);
 
+int  number_of_lines(string text);
+string remove_empty_lines(string text);
 
 /*
 ********************************************************************* 
@@ -76,14 +62,15 @@ void show_vars_array(); // temporary
 */
 
 %}
-%union {
-    char*   strval;
-    long     ival;
-    class_identifier* identifier;
-}
+%define api.value.type {std::string}
 
-%token <strval> T_PIDENTIFIER
-%token <ival> T_NUM
+/* %union {
+    string   str;
+    long    num;
+} */
+
+%token T_PIDENTIFIER
+%token T_NUM
 
 %token T_ASSIGN ":="
 %token T_COMMA ","
@@ -125,144 +112,246 @@ void show_vars_array(); // temporary
 %token T_READ "READ"
 %token T_WRITE "WRITE"
 
-%type <identifier> identifier
-
 %%
 input:
     "DECLARE" declarations "BEGIN" commands "END" {
-        // machine_code.push_back("1");
-        machine_code.push_back("HALT");
+        stringstream ss;
+        ss << $2 << "\n" << $4 << "HALT";
+        machine_code = ss.str();
     }
     | "BEGIN" commands "END" {
-        // machine_code.push_back("2");
-        machine_code.push_back("HALT");
+        stringstream ss;
+        ss << $2 << "HALT";
+        machine_code = ss.str();
     }
 
 declarations:
     declarations "," T_PIDENTIFIER {
-        // check if var $3 exists and if not, create in memmory
         declare_variable_int($3);
-        machine_code.push_back("3");
     }
     | declarations "," T_PIDENTIFIER "(" T_NUM ":" T_NUM ")" {
-        // check if var $3 exists and if not, create in memmory
-        declare_variable_array($3, $5, $7);
-        machine_code.push_back("4");
+        declare_variable_array($3, stoi($5), stoi($7));
     }
     | T_PIDENTIFIER {
-        // check if var $1 exists and if not, create in memmory
         declare_variable_int($1);
-        machine_code.push_back("5");
     }
     | T_PIDENTIFIER "(" T_NUM ":" T_NUM ")" {
-        // check if var $1 exists and if not, create in memmory
-        declare_variable_array($1, $3, $5);
-        machine_code.push_back("6");
+        declare_variable_array($1, stoi($3), stoi($5));
     }
 
 commands:
     commands command {
-        // end of command $2
-        machine_code.push_back("7");
+        stringstream ss;
+        ss << $1 << "\n" << $2 << "\n";
+        $$ = ss.str();
     }
     | command {
-        // end of command $1
-        machine_code.push_back("8");
+        $$ = $1;
     }
 
 command:
     identifier ":=" expression ";" {
-        machine_code.push_back("9");
+        stringstream ss;
+        ss << $3 << "\n";
+        ss << save_variable_to_memmory($1, 'b', 'c') << "\n";
+        $$ = ss.str();
     }
     | "IF" condition "THEN" commands "ELSE" commands "ENDIF" {
-        machine_code.push_back("10");
+        int commands_1_lines = number_of_lines($4);
+        int commands_2_lines = number_of_lines($6);
+
+        stringstream ss;
+        ss << $2 << "\n";
+        ss << "JUMP c " << (commands_1_lines + 1) << " \n";
+        ss << $4 << "\n";
+        ss << "JUMP c " << commands_2_lines << " \n";
+        ss << $6 << "\n";
+        $$ = ss.str();
     }
     | "IF" condition "THEN" commands "ENDIF" {
-        machine_code.push_back("11");
+        int commands_1_lines = number_of_lines($4);
+
+        stringstream ss;
+        ss << $2 << "\n";
+        ss << "JUMP c " << (commands_1_lines + 1) << " \n";
+        ss << $4 << "\n";
+        $$ = ss.str();
     }
     | "WHILE" condition "DO" commands "ENDWHILE" {
-        machine_code.push_back("12");
+        int commands_1_lines = number_of_lines($4);
+
+        stringstream ss;
+        ss << $2 << "\n";
+        ss << "JUMP c 2 \n";
+        ss << "JUMP c " << (commands_1_lines + 2) << " \n";
+        ss << $4 << "\n";
+        ss << "JUMP c -" << (commands_1_lines + 2) << " \n";
+        $$ = ss.str();
     }
     | "REPEAT" commands "UNTIL" condition ";" {
-        machine_code.push_back("13");
+        int commands_1_lines = number_of_lines($2);
+
+        stringstream ss;
+        ss << $2 << "\n";
+        ss << $4 << "\n";
+        ss << "JUMP c 2 \n";
+        ss << "JUMP c -" << (commands_1_lines + 2) << " \n";
+        $$ = ss.str();
     }
-    | "FOR" T_PIDENTIFIER "FROM" value "TO" value "DO" commands "ENDFOR" {
-        machine_code.push_back("14");
+    | "FOR" iterator "FROM" value "TO" value "DO" commands "ENDFOR" {
+        initialize_variable($2);
+        stringstream ss;
+        ss << "RESET f \n";
+        ss << create_constant_ASM(stoi($4)) << "\n";
+        for(int i = stoi($4); i < stoi($6); i++){
+            ss << $8 << "\n";
+            ss << "INC f \n";
+        }
+        $$ = ss.str();
+        remove_iterator($2);
     }
-    | "FOR" T_PIDENTIFIER "FROM" value "DOWNTO" value "DO" commands "ENDFOR" {
-        machine_code.push_back("15");
+    | "FOR" iterator "FROM" value "DOWNTO" value "DO" commands "ENDFOR" {
+        initialize_variable($2);
+        stringstream ss;
+        ss << "RESET f \n";
+        ss << create_constant_ASM(stoi($4)) << "\n";
+        for(int i = stoi($4); i > stoi($6); i--){
+            ss << $8 << "\n";
+            ss << "DEC f \n";
+        }
+        $$ = ss.str();
+        remove_iterator($2);
     }
     | "READ" identifier ";" {
-        // STORE value of var $2, if exists
-        read(*$2);
-        machine_code.push_back("16");
+        stringstream ss;
+        ss << "RESET a \n";
+        ss << "GET a \n";
+        ss << "LOAD b a \n";
+        ss << save_variable_to_memmory($2, 'b', 'c') << "\n";
+        $$ = ss.str();
+        initialize_variable($2);
     }
     | "WRITE" value ";" {
-        // PUT value of $2, if exists
-        machine_code.push_back("17");
+        stringstream ss;
+        ss << get_variable_to_rejestr($1, 'b') << "\n";
+        ss << "RESET a \n";
+        ss << "STORE b \n";
+        ss << "PUT a \n";
+        $$ = ss.str();
     }
 
 expression:
     value {
-        machine_code.push_back("18");
+        $$ = get_variable_to_rejestr($1, 'b');
     }
     | value "+" value {
-        machine_code.push_back("19");
+        stringstream ss;
+        /* TODO w dłuższej wersji podział na takie same i pzresunięcie binarne (mnożenie razy 2) zamiast dodawania. */
+        // if($1 == $3){
+        //     ss << get_variable_to_rejestr($1, 'b');
+        //     ss << multiply_ASM('b', 2);
+        // } else {
+        //     ss << get_variable_to_rejestr($1, 'b');
+        //     ss << get_variable_to_rejestr($3, 'c');
+        //     ss << add_ASM('b', 'c');
+        // }
+        ss << get_variable_to_rejestr($1, 'b') << "\n";
+        ss << get_variable_to_rejestr($3, 'c') << "\n";
+        ss << add_ASM('b', 'c') << "\n";
+        $$ = ss.str();
     }
     | value "-" value {
-        machine_code.push_back("20");
+        stringstream ss;
+        /* TODO w dłuższej wersji podział na takie same i wyzerowanie elementu zamiast odejmowania */
+        // if($1 == $3){
+        //     ss << get_variable_to_rejestr($1, 'b');
+        // } else {
+        //     ss << get_variable_to_rejestr($1, 'b');
+        //     ss << get_variable_to_rejestr($3, 'c');
+        //     ss << add_ASM('b', 'c');
+        // }
+        ss << get_variable_to_rejestr($1, 'b') << "\n";
+        ss << get_variable_to_rejestr($3, 'c') << "\n";
+        ss << substract_ASM('b', 'c') << "\n";
+        $$ = ss.str();
     }
     | value "*" value {
-        machine_code.push_back("21");
+        stringstream ss;
+        ss << get_variable_to_rejestr($1, 'b') << "\n";
+        ss << get_variable_to_rejestr($3, 'c') << "\n";
+        ss << multiply_ASM('b', 'c') << "\n";
+        $$ = ss.str();
     }
     | value "/" value {
-        machine_code.push_back("22");
+        stringstream ss;
+        ss << get_variable_to_rejestr($1, 'b') << "\n";
+        ss << get_variable_to_rejestr($3, 'c') << "\n";
+        ss << divide_ASM('b', 'c') << "\n";
+        $$ = ss.str();
     }
     | value "%" value {
-        machine_code.push_back("23");
+        stringstream ss;
+        ss << get_variable_to_rejestr($1, 'b') << "\n";
+        ss << get_variable_to_rejestr($3, 'c') << "\n";
+        ss << modulo_ASM('b', 'c') << "\n";
+        $$ = ss.str();
     }
 
-condition:
+condition: // returns on rejestr c, works on (c, d)
     value "=" value {
-        machine_code.push_back("24");
+        stringstream ss;
+        ss << get_variable_to_rejestr($1, 'c') << "\n";
+        ss << get_variable_to_rejestr($1, 'd') << "\n";
+        // ...
     }
     | value "!=" value {
-        machine_code.push_back("25");
+        // machine_code.push_back("25");
     }
     | value "<" value {
-        machine_code.push_back("26");
+        // machine_code.push_back("26");
     }
     | value ">" value {
-        machine_code.push_back("27");
+        // machine_code.push_back("27");
     }
     | value "<=" value {
-        machine_code.push_back("28");
+        // machine_code.push_back("28");
     }
     | value ">=" value {
-        machine_code.push_back("29");
+        // machine_code.push_back("29");
     }
 
 value:
     T_NUM {
-        machine_code.push_back("30");
+        $$ = $1;
     }
     | identifier {
-        machine_code.push_back("31");
+        $$ = $1;
     }
 
 identifier:
     T_PIDENTIFIER {
-        // nothing
-        $$ = new class_identifier($1);
-        machine_code.push_back("32");
+        $$ = $1;
     }
     | T_PIDENTIFIER "(" T_PIDENTIFIER ")" {
-        $$ = new class_identifier($1, $3);
-        machine_code.push_back("33");
+        // machine_code.push_back("33");
     }
     | T_PIDENTIFIER "(" T_NUM ")" {
-        $$ = new class_identifier($1, $3);
-        machine_code.push_back("34");
+        // machine_code.push_back("34");
+    }
+
+iterator: // saved on rejestr f
+    T_PIDENTIFIER {
+        if(is_declared($1) || is_iterator($1)){
+            err(errors::AlreadyDeclaredVar, $1);
+        }
+        declare_variable_int($1);
+        for(var v : vars) {
+            if(v.name == $1){
+                v.initialized = true;
+                v.iterator = true;
+            }
+        }
+        $$ = $1;
     }
 
 %%
@@ -281,59 +370,19 @@ void yyerror(char const *s){
     exit(-1);
 }
 
-void err(errors e, char* var){
-    string err = "";
-    switch(e){
-        case BadArrayScope:
-            break;
-        case AlreadyDeclaredVar:
-            err = "Multiple declarations of variable '" + (string)var + "'";
-            break;
-        case UndeclaredVar:
-            err = "Undeclared variable '" + (string)var + "'";
-            break;
-        case UninitializedVar:
-            err = "Undinitialized variable '" + (string)var + "'";
-            break;
-        case BadVarType:
-            err = "Wrong usage of variable '" + (string)var + "' according to its type";
-            break;
-        case UnrecognizedText:
-        default:
-            err = "Couldn't recognise text '" + (string)var + "'";
-            break;
-    }
-    yyerror(err.c_str());
-}
 
-vector<string> run_parser(FILE * data){
-    machine_code.push_back("RESET a");
-
+string run_parser(FILE * data){
     yyset_in(data);
     yyparse();
 
-    show_vars_array();
-
-    return machine_code;
-}
-
-
-/* display on standard output the table with data in array of variable
-at current time */
-void show_vars_array(){
-    cout << "\nVars" << endl;
-    cout << "name_in_code \t " << "name_rejestr \t " << "initialized \t " << "var_types \t " << "scope_start \t " << "scope_end" << endl;
-    for(std::vector<var>::iterator it = vars.begin(); it != vars.end(); ++it) {
-        cout << (*it).name_in_code << " \t\t " << (*it).name_rejestr << " \t\t " << (*it).initialized << " \t\t " << (*it).var_types << " \t\t " << (*it).scope_start << " \t\t " << (*it).scope_end << endl;
-    }
-    cout << endl;
+    return remove_empty_lines(machine_code);
 }
 
 
 /* check if variable of given name was previously declared */
-bool is_declared(char* name){
+bool is_declared(string name){
     for(var v : vars) {
-        if(v.name_in_code == name){
+        if(v.name == name){
             return true;
         }
     }
@@ -341,31 +390,56 @@ bool is_declared(char* name){
 }
 
 /* check if variable of given name was already initialized */
-bool is_initialized(char* name){
+bool is_initialized(string name){
     for(var v : vars) {
-        if(v.name_in_code == name){
+        if(v.name == name){
             return v.initialized;
         }
     }
     return false;
 }
 
+/* check if variable of given name was already initialized */
+bool is_iterator(string name){
+    for(var v : vars) {
+        if(v.name == name){
+            return v.iterator;
+        }
+    }
+    return false;
+}
+
+
+/* delete variable after its scope */
+void remove_iterator(string name){
+    int i = 0;
+    for(var v : vars) {
+        if(v.name == name){
+            break;
+        }
+        i++;
+    }
+    vars.erase(vars.begin() + (i - 1));
+}
+
+
 
 /* check if the name is not taken, and add int variable into table */
-void declare_variable_int(char* name){
+void declare_variable_int(string name){
     /* not used name */
     if(is_declared(name)){
         err(errors::AlreadyDeclaredVar, name);
     }
-    struct var temp_v;
-    temp_v.name_in_code = name;
-    temp_v.var_types = var::integer;
-    vars.push_back(temp_v);
+    struct var v;
+    v.name = name;
+    v.memmoryIndex = memmoryIterator++;
+    v.var_type = var::integer;
+    vars.push_back(v);
 }
 
 
 /* check if the name is not taken, and add array variable into table */
-void declare_variable_array(char* name, int start, int end){
+void declare_variable_array(string name, int start, int end){
     /* correct scope */
     if(start >= end){
         err(errors::BadArrayScope, name);
@@ -374,84 +448,87 @@ void declare_variable_array(char* name, int start, int end){
     if(is_declared(name)){
         err(errors::AlreadyDeclaredVar, name);
     }
-    struct var temp_v;
-    temp_v.name_in_code = name;
-    temp_v.var_types = var::array;
-    temp_v.scope_start = start;
-    temp_v.scope_end = end;
-    vars.push_back(temp_v);
-    /* free memory rejestr slot */
-    /* vector<string> all {"a", "b", "c", "d", "e", "f"};
-    vector<string> taken;
-    for(var v : vars) {
-        taken.push_back(v.name_rejestr);
-    }
-    for (string a : all){
-        if(find(taken.begin(), taken.end(), a) == taken.end()){
-            struct var temp_v;
-            temp_v.name_in_code = name;
-            temp_v.name_rejestr = a;
-            temp_v.var_types = var::array;
-            temp_v.scope_start = start;
-            temp_v.scope_end = end;
-            vars.push_back(temp_v);
-            return;
-        }
-    }
-    string err = "Not enough rejestr slots {a,b,c,d,e,f} for creating variable '" + (string)name + "'";
-    char err_array[100];
-    strcpy(err_array, err.c_str());
-    yyerror(err_array); */
+    struct var v;
+    v.name = name;
+    v.memmoryIndex = memmoryIterator++;
+    v.var_type = var::array;
+    v.scope_start = start;
+    v.scope_end = end;
+    vars.push_back(v);
+    memmoryIterator += end - start;
 }
 
 
 /* check if is declared, if type is correct and change to initialized */
-void initialize_variable_int(char* name){
-    /* not used name */
-    if(!is_declared(name)){
-        err(errors::UndeclaredVar, name);
-    }
+void initialize_variable(string name){
     for(var v : vars) {
-        if(v.name_in_code == name){
-            if(v.var_types != var::integer){
-                err(errors::BadVarType, name);
-            }
-            v.initialized = true;
-        }
-    }
-}
-
-/* check if is declared, if type and scope is correct and change to initialized */
-void initialize_variable_array(char* name, int index){
-    /* not used name */
-    if(!is_declared(name)){
-        err(errors::UndeclaredVar, name);
-    }
-    for(var v : vars) {
-        if(v.name_in_code == name){
-            if(v.var_types != var::array){
-                err(errors::BadVarType, name);
-            }
-            if(index < v.scope_start || index > v.scope_end){
-                err(errors::BadArrayScope, name);
-            }
+        if(v.name == name){
             v.initialized = true;
         }
     }
 }
 
 
-/* check if declared, if type correct and store value */
-void read(class_identifier id){
-    switch(id.type){
-        case class_identifier::id:
-            initialize_variable_int(id.var_name);
-            break;
-        case class_identifier::array_with_var:
-            initialize_variable_array(id.var_name, 0); // TODO
-            break;
-        case class_identifier::array_with_num:
-            initialize_variable_array(id.var_name, id.num_index);
-            break;
-    }
+string get_variable_to_rejestr(string name, char rejestr){
+    /* TODO - jego funkcja myLOAD() */
+    return "\n";
 }
+string save_variable_to_memmory(string name, char rejestr1, char rejestr2){
+    /* TODO - jego funkcja mySTORE() */
+    return "\n";
+}
+string add_ASM(char rejestr1, char rejestr2){
+    return "\n";
+}
+string substract_ASM(char rejestr1, char rejestr2){
+    return "\n";
+}
+string multiply_ASM(char rejestr1, char rejestr2){
+    return "\n";
+}
+string divide_ASM(char rejestr1, char rejestr2){
+    return "\n";
+}
+string modulo_ASM(char rejestr1, char rejestr2){
+    return "\n";
+}
+
+string create_constant_ASM(int value){
+    return "\n";
+}
+
+int number_of_lines(string text){
+    text = remove_empty_lines(text);
+    int lines = 1;
+    string::size_type pos = 0;
+    while ((pos = text.find("\n", pos)) != std::string::npos) {
+        lines++;
+        pos += 1;
+    }
+    int n = text.length();
+    if(n > 2 && text.substr(n-1, 1) == "\n"){
+        lines--;
+    }
+    return lines;
+}
+
+string remove_empty_lines(string text){
+    vector<int> indices;
+    string::size_type pos = 0;
+    while ((pos = text.find("\n", pos)) != std::string::npos) {
+        indices.push_back(pos);
+        pos += 1;
+    }
+    for(long unsigned int i = indices.size() - 1; i > 1; i--){
+        if(indices[i] - indices[i-1] == 1){
+        text.erase(indices[i-1], 1);
+        }
+    }
+    return text;
+}
+
+/*
+*********************************************************************
+************************* assembler code ****************************
+*********************************************************************
+*/
