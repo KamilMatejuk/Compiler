@@ -21,21 +21,22 @@ void yyerror(char const *s){
 void err(errors e, string var){
     string err = "";
     switch(e){
-        case BadArrayScope:
+        case errors::BadArrayScope:
+            err = "Wrong scope of variable '" + (string)var + "'";
             break;
-        case AlreadyDeclaredVar:
+        case errors::AlreadyDeclaredVar:
             err = "Multiple declarations of variable '" + (string)var + "'";
             break;
-        case UndeclaredVar:
+        case errors::UndeclaredVar:
             err = "Undeclared variable '" + (string)var + "'";
             break;
-        case UninitializedVar:
-            err = "Undinitialized variable '" + (string)var + "'";
+        case errors::UninitializedVar:
+            err = "Uninitialized variable '" + (string)var + "'";
             break;
-        case BadVarType:
+        case errors::BadVarType:
             err = "Wrong usage of variable '" + (string)var + "' according to its type";
             break;
-        case UnrecognizedText:
+        case errors::UnrecognizedText:
         default:
             err = "Couldn't recognise text '" + (string)var + "'";
             break;

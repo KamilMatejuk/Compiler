@@ -10,6 +10,7 @@ using namespace std;
 *********************************************************************
 */
 
+// storing all required data for each variable
 struct var {
     var(): name(""), memmoryIndex(-1), initialized(false), iterator(false), var_type(integer), scope_start(-1), scope_end(-1) {}
     public: string name;
@@ -19,6 +20,19 @@ struct var {
     public: enum { integer, array } var_type;
     public: int scope_start;
     public: int scope_end;
+};
+// returning type of used variable
+struct found_var_type {
+    found_var_type(): v1(), v2(), number(-1) {}
+    public: enum {
+        RegularInteger,
+        VariableInteger,
+        VariableArrayWithNumericIndex,
+        VariableArrayWithVariableIndex,
+        NotRecognisable } type;
+    public: var v1;
+    public: var v2;
+    public: int number;
 };
 
 extern vector<var> vars;
@@ -32,7 +46,7 @@ void initialize_variable(string name);
 void declare_variable_int(string name);
 void declare_variable_array(string name, int start, int end);
 
-string check_var_type(string name);
+found_var_type check_var_type(string name);
 bool is_number(string& s);
 
 
