@@ -18,13 +18,25 @@ using namespace std;
 #include <string.h>
 #include <string>
 #include <vector>
+#include <regex>
 #include <stack>
+#include <map>
 #include "variables.h"
 #include "errors.h"
 using namespace std;
 
 extern int yylineno;
 vector<var> vars;           // list of declared variables
+// list of things currently stored in each rejestrs
+// possible values: "None", name_of_variable, number, "condition", "value"
+map<char, string> rejestrs = {
+    { 'a', "None" },
+    { 'b', "None" },
+    { 'c', "None" },
+    { 'd', "None" },
+    { 'e', "None" },
+    { 'f', "None" },
+};
 long long memmoryIterator = 0; // starting index of used memmory slots
 string machine_code;        // created machine code
 
@@ -50,10 +62,12 @@ string substract_ASM(char rejestr1, char rejestr2);
 string multiply_ASM(char rejestr1, char rejestr2);
 string divide_ASM(char rejestr1, char rejestr2);
 string modulo_ASM(char rejestr1, char rejestr2);
-string create_constant_ASM(int value);
+string create_constant_ASM(string value, char rejestr);
 
 int  number_of_lines(string text);
 string remove_empty_lines(string text);
+string check_var_type(string name);
+bool is_number(string& s);
 
 /*
 ********************************************************************* 
@@ -113,10 +127,16 @@ string remove_empty_lines(string text);
 %token T_WRITE "WRITE"
 
 %%
+
+/* 
+Rejestrs:
+    conditions return on 'c' (1 is true, 0 is false)
+*/
 input:
     "DECLARE" declarations "BEGIN" commands "END" {
         stringstream ss;
-        ss << $2 << "\n" << $4 << "HALT";
+        // ss << $2 << "\n" << $4 << "HALT";
+        ss << $4 << "HALT";
         machine_code = ss.str();
     }
     | "BEGIN" commands "END" {
@@ -162,9 +182,9 @@ command:
 
         stringstream ss;
         ss << $2 << "\n";
-        ss << "JUMP c " << (commands_1_lines + 1) << " \n";
+        ss << "JZERO c " << (commands_1_lines + 2) << " \n";
         ss << $4 << "\n";
-        ss << "JUMP c " << commands_2_lines << " \n";
+        ss << "JZERO c " << (commands_2_lines + 1) << " \n";
         ss << $6 << "\n";
         $$ = ss.str();
     }
@@ -173,36 +193,37 @@ command:
 
         stringstream ss;
         ss << $2 << "\n";
-        ss << "JUMP c " << (commands_1_lines + 1) << " \n";
+        ss << "JZERO c " << (commands_1_lines + 1) << " \n";
         ss << $4 << "\n";
         $$ = ss.str();
     }
     | "WHILE" condition "DO" commands "ENDWHILE" {
+        int condition_1_lines = number_of_lines($2);
         int commands_1_lines = number_of_lines($4);
 
         stringstream ss;
         ss << $2 << "\n";
-        ss << "JUMP c 2 \n";
-        ss << "JUMP c " << (commands_1_lines + 2) << " \n";
+        ss << "JZERO c " << (commands_1_lines + 2) << " \n";
         ss << $4 << "\n";
-        ss << "JUMP c -" << (commands_1_lines + 2) << " \n";
+        ss << "JZERO c -" << (condition_1_lines + commands_1_lines + 1) << " \n";
         $$ = ss.str();
     }
     | "REPEAT" commands "UNTIL" condition ";" {
         int commands_1_lines = number_of_lines($2);
+        int condition_1_lines = number_of_lines($4);
 
         stringstream ss;
         ss << $2 << "\n";
         ss << $4 << "\n";
-        ss << "JUMP c 2 \n";
-        ss << "JUMP c -" << (commands_1_lines + 2) << " \n";
+        ss << "JZERO c 2 \n";
+        ss << "JZERO c -" << (commands_1_lines + condition_1_lines + 1) << " \n";
         $$ = ss.str();
     }
     | "FOR" iterator "FROM" value "TO" value "DO" commands "ENDFOR" {
         initialize_variable($2);
         stringstream ss;
         ss << "RESET f \n";
-        ss << create_constant_ASM(stoi($4)) << "\n";
+        ss << create_constant_ASM($4, 'a') << "\n";
         for(int i = stoi($4); i < stoi($6); i++){
             ss << $8 << "\n";
             ss << "INC f \n";
@@ -214,7 +235,7 @@ command:
         initialize_variable($2);
         stringstream ss;
         ss << "RESET f \n";
-        ss << create_constant_ASM(stoi($4)) << "\n";
+        ss << create_constant_ASM($4, 'a') << "\n";
         for(int i = stoi($4); i > stoi($6); i--){
             ss << $8 << "\n";
             ss << "DEC f \n";
@@ -333,10 +354,14 @@ identifier:
         $$ = $1;
     }
     | T_PIDENTIFIER "(" T_PIDENTIFIER ")" {
-        // machine_code.push_back("33");
+        stringstream ss;
+        ss << $1 << "(" << $3 << ")";
+        $$ = ss.str();
     }
     | T_PIDENTIFIER "(" T_NUM ")" {
-        // machine_code.push_back("34");
+        stringstream ss;
+        ss << $1 << "(" << $3 << ")";
+        $$ = ss.str();
     }
 
 iterator: // saved on rejestr f
@@ -409,6 +434,48 @@ bool is_iterator(string name){
     return false;
 }
 
+/* check if used type is correct, and returns only name of variable */
+string check_var_type(string name){
+    int par1 = name.find("(", 0);
+    if(par1 > -1){
+        string n = name.substr(0, par1);
+        int len = name.length() - par1 - 2;
+        string arg = name.substr(par1 + 1, len);
+        if(is_number(arg)){
+            /* array with numeric argument */
+            int a = stoi(arg);
+            for(var v : vars) {
+                if(v.name == n){
+                    if(v.var_type != var::array || v.scope_start > a || v.scope_end < a){
+                        err(errors::BadVarType, name);
+                    }
+                    return n;
+                }
+            }
+        } else {
+            /* array with variable argument */
+
+        }
+
+    } else {
+        /* regular variable type integer */
+        for(var v : vars) {
+            if(v.name == name){
+                if(v.var_type != var::integer){
+                    err(errors::BadVarType, name);
+                }
+                return name;
+            }
+        }
+    }
+    return name;
+}
+
+bool is_number(string& s){
+    return !s.empty() && std::find_if(s.begin(), 
+        s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
+}
+
 
 /* delete variable after its scope */
 void remove_iterator(string name){
@@ -461,8 +528,9 @@ void declare_variable_array(string name, int start, int end){
 
 /* check if is declared, if type is correct and change to initialized */
 void initialize_variable(string name){
+    string n = check_var_type(name);
     for(var v : vars) {
-        if(v.name == name){
+        if(v.name == n){
             v.initialized = true;
         }
     }
@@ -474,7 +542,48 @@ string get_variable_to_rejestr(string name, char rejestr){
     return "\n";
 }
 string save_variable_to_memmory(string name, char rejestr1, char rejestr2){
-    /* TODO - jego funkcja mySTORE() */
+    stringstream ss;
+    int par1 = name.find("(", 0);
+    if(par1 > -1){
+        string n = name.substr(0, par1);
+        int len = name.length() - par1 - 2;
+        string arg = name.substr(par1 + 1, len);
+        if(is_number(arg)){
+            /* array with numeric argument */
+            int a = stoi(arg);
+            for(var v : vars) {
+                if(v.name == n){
+                    if(v.var_type != var::array || v.scope_start > a || v.scope_end < a){
+                        err(errors::BadVarType, name);
+                    }
+                    ss << create_constant_ASM(a, 'a');
+                    ss << "LOAD " << rejestr2 << " a";
+                    ss << create_constant_ASM(v.memmoryIndex, 'a');
+                    ss << "SUB " << rejestr2 << " a";
+                    ss << create_constant_ASM(v.scope_start, 'a');
+                    ss << "ADD a " << rejestr2;
+                    return ss.str();
+                }
+            }
+        } else {
+            /* array with variable argument */
+
+        }
+
+    } else {
+        /* regular variable type integer */
+        for(var v : vars) {
+            if(v.name == name){
+                if(v.var_type != var::integer){
+                    err(errors::BadVarType, name);
+                }
+                ss << create_constant_ASM(v.memmoryIndex, 'a');
+                ss << "STORE " << rejestr1 << " a";
+                return ss.str();
+            }
+        }
+    }
+    return name;
     return "\n";
 }
 string add_ASM(char rejestr1, char rejestr2){
@@ -493,7 +602,7 @@ string modulo_ASM(char rejestr1, char rejestr2){
     return "\n";
 }
 
-string create_constant_ASM(int value){
+string create_constant_ASM(int value, char rejestr){
     return "\n";
 }
 
@@ -501,7 +610,7 @@ int number_of_lines(string text){
     text = remove_empty_lines(text);
     int lines = 1;
     string::size_type pos = 0;
-    while ((pos = text.find("\n", pos)) != std::string::npos) {
+    while ((pos = text.find("\n", pos)) != string::npos) {
         lines++;
         pos += 1;
     }
@@ -513,15 +622,9 @@ int number_of_lines(string text){
 }
 
 string remove_empty_lines(string text){
-    vector<int> indices;
-    string::size_type pos = 0;
-    while ((pos = text.find("\n", pos)) != std::string::npos) {
-        indices.push_back(pos);
-        pos += 1;
-    }
-    for(long unsigned int i = indices.size() - 1; i > 1; i--){
-        if(indices[i] - indices[i-1] == 1){
-        text.erase(indices[i-1], 1);
+    for (string::size_type i = text.size(); i > 1; i--) {
+        if(text[i] == text[i-1]){
+            text.erase(i, 1);
         }
     }
     return text;
