@@ -1,8 +1,21 @@
 #include "header.h"
 
+#include <iostream>
 #include <string.h>
 #include <string>
 using namespace std;
+
+
+extern int yylineno;
+
+
+void yyerror(char const *s){
+    if(s == "syntax error"){
+        s = "Unrecognisable text";
+    }
+    cerr << "\nLine " << yylineno << ": " << s << endl;
+    exit(-1);
+}
 
 
 void err(errors e, string var){

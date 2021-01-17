@@ -22,7 +22,6 @@ using namespace std;
 #include "header.h"
 using namespace std;
 
-extern int yylineno;
 // list of things currently stored in each rejestrs
 // possible values: "None", name_of_variable, number, "condition", "value"
 map<char, string> rejestrs = {
@@ -361,19 +360,9 @@ iterator: // saved on rejestr f
 
 /*
 *********************************************************************
-****************** body of methods used in parser *******************
+************************* starting parsing **************************
 *********************************************************************
 */
-
-void yyerror(char const *s){
-    if(s == "syntax error"){
-        s = "Unrecognisable text";
-    }
-    cerr << "\nLine " << yylineno << ": " << s << endl;
-    exit(-1);
-}
-
-
 string run_parser(FILE * data){
     yyset_in(data);
     yyparse();
@@ -381,11 +370,18 @@ string run_parser(FILE * data){
     return remove_empty_lines(machine_code);
 }
 
+/*
+*********************************************************************
+****************** body of methods used in parser *******************
+*********************************************************************
+*/
+
 
 string get_variable_to_rejestr(string name, char rejestr){
     /* TODO - jego funkcja myLOAD() */
     return "\n";
 }
+
 string save_variable_to_memmory(string name, char rejestr1, char rejestr2){
     stringstream ss;
     int par1 = name.find("(", 0);
@@ -474,9 +470,3 @@ string remove_empty_lines(string text){
     }
     return text;
 }
-
-/*
-*********************************************************************
-************************* assembler code ****************************
-*********************************************************************
-*/
