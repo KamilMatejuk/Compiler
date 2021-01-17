@@ -1,6 +1,4 @@
 %code requires {
-// #include "variables.h"
-// #include "errors.h"
 using namespace std;
 }
 %{
@@ -21,12 +19,10 @@ using namespace std;
 #include <regex>
 #include <stack>
 #include <map>
-#include "variables.h"
-#include "errors.h"
+#include "header.h"
 using namespace std;
 
 extern int yylineno;
-vector<var> vars;           // list of declared variables
 // list of things currently stored in each rejestrs
 // possible values: "None", name_of_variable, number, "condition", "value"
 map<char, string> rejestrs = {
@@ -37,37 +33,24 @@ map<char, string> rejestrs = {
     { 'e', "None" },
     { 'f', "None" },
 };
-long long memmoryIterator = 0; // starting index of used memmory slots
-string machine_code;        // created machine code
+// created machine code
+string machine_code;
 
 // methods
-extern void err(errors e, string var);
-
 int  yylex(void);
 void yyset_in(FILE * in_str);
-void yyerror(char const *s);
-bool is_declared(string name);
-bool is_iterator(string name);
-void remove_iterator(string name);
-bool is_initialized(string name);
-void initialize_variable(string name);
-void declare_variable_int(string name);
-void declare_variable_array(string name, int start, int end);
 
 string get_variable_to_rejestr(string name, char rejestr);
 string save_variable_to_memmory(string name, char rejestr1, char rejestr2);
-
 string add_ASM(char rejestr1, char rejestr2);
 string substract_ASM(char rejestr1, char rejestr2);
 string multiply_ASM(char rejestr1, char rejestr2);
 string divide_ASM(char rejestr1, char rejestr2);
 string modulo_ASM(char rejestr1, char rejestr2);
-string create_constant_ASM(string value, char rejestr);
+string create_constant_ASM(int value, char rejestr);
 
 int  number_of_lines(string text);
 string remove_empty_lines(string text);
-string check_var_type(string name);
-bool is_number(string& s);
 
 /*
 ********************************************************************* 
@@ -77,11 +60,6 @@ bool is_number(string& s);
 
 %}
 %define api.value.type {std::string}
-
-/* %union {
-    string   str;
-    long    num;
-} */
 
 %token T_PIDENTIFIER
 %token T_NUM
@@ -223,7 +201,7 @@ command:
         initialize_variable($2);
         stringstream ss;
         ss << "RESET f \n";
-        ss << create_constant_ASM($4, 'a') << "\n";
+        ss << create_constant_ASM(stoi($4), 'a') << "\n";
         for(int i = stoi($4); i < stoi($6); i++){
             ss << $8 << "\n";
             ss << "INC f \n";
@@ -235,7 +213,7 @@ command:
         initialize_variable($2);
         stringstream ss;
         ss << "RESET f \n";
-        ss << create_constant_ASM($4, 'a') << "\n";
+        ss << create_constant_ASM(stoi($4), 'a') << "\n";
         for(int i = stoi($4); i > stoi($6); i--){
             ss << $8 << "\n";
             ss << "DEC f \n";
@@ -401,139 +379,6 @@ string run_parser(FILE * data){
     yyparse();
 
     return remove_empty_lines(machine_code);
-}
-
-
-/* check if variable of given name was previously declared */
-bool is_declared(string name){
-    for(var v : vars) {
-        if(v.name == name){
-            return true;
-        }
-    }
-    return false;
-}
-
-/* check if variable of given name was already initialized */
-bool is_initialized(string name){
-    for(var v : vars) {
-        if(v.name == name){
-            return v.initialized;
-        }
-    }
-    return false;
-}
-
-/* check if variable of given name was already initialized */
-bool is_iterator(string name){
-    for(var v : vars) {
-        if(v.name == name){
-            return v.iterator;
-        }
-    }
-    return false;
-}
-
-/* check if used type is correct, and returns only name of variable */
-string check_var_type(string name){
-    int par1 = name.find("(", 0);
-    if(par1 > -1){
-        string n = name.substr(0, par1);
-        int len = name.length() - par1 - 2;
-        string arg = name.substr(par1 + 1, len);
-        if(is_number(arg)){
-            /* array with numeric argument */
-            int a = stoi(arg);
-            for(var v : vars) {
-                if(v.name == n){
-                    if(v.var_type != var::array || v.scope_start > a || v.scope_end < a){
-                        err(errors::BadVarType, name);
-                    }
-                    return n;
-                }
-            }
-        } else {
-            /* array with variable argument */
-
-        }
-
-    } else {
-        /* regular variable type integer */
-        for(var v : vars) {
-            if(v.name == name){
-                if(v.var_type != var::integer){
-                    err(errors::BadVarType, name);
-                }
-                return name;
-            }
-        }
-    }
-    return name;
-}
-
-bool is_number(string& s){
-    return !s.empty() && std::find_if(s.begin(), 
-        s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
-}
-
-
-/* delete variable after its scope */
-void remove_iterator(string name){
-    int i = 0;
-    for(var v : vars) {
-        if(v.name == name){
-            break;
-        }
-        i++;
-    }
-    vars.erase(vars.begin() + (i - 1));
-}
-
-
-
-/* check if the name is not taken, and add int variable into table */
-void declare_variable_int(string name){
-    /* not used name */
-    if(is_declared(name)){
-        err(errors::AlreadyDeclaredVar, name);
-    }
-    struct var v;
-    v.name = name;
-    v.memmoryIndex = memmoryIterator++;
-    v.var_type = var::integer;
-    vars.push_back(v);
-}
-
-
-/* check if the name is not taken, and add array variable into table */
-void declare_variable_array(string name, int start, int end){
-    /* correct scope */
-    if(start >= end){
-        err(errors::BadArrayScope, name);
-    }
-    /* not used name */
-    if(is_declared(name)){
-        err(errors::AlreadyDeclaredVar, name);
-    }
-    struct var v;
-    v.name = name;
-    v.memmoryIndex = memmoryIterator++;
-    v.var_type = var::array;
-    v.scope_start = start;
-    v.scope_end = end;
-    vars.push_back(v);
-    memmoryIterator += end - start;
-}
-
-
-/* check if is declared, if type is correct and change to initialized */
-void initialize_variable(string name){
-    string n = check_var_type(name);
-    for(var v : vars) {
-        if(v.name == n){
-            v.initialized = true;
-        }
-    }
 }
 
 

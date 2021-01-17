@@ -2,8 +2,6 @@
 %option yylineno
 %option nounput
 %{
-// #include "variables.h"
-// #include "errors.h"
 #include <iostream>
 #include <string.h>
 #include <string>
@@ -18,13 +16,10 @@ int yylex();
 
 [_a-z]+         {
                     yylval = strdup(yytext);
-                    // yylval.str = strdup(yytext);
                     return T_PIDENTIFIER;
                 };
 \-?[0-9]+       {
                     yylval = strdup(yytext);
-                    // yylval.str = strdup(yytext);
-                    // yylval.num = atoi(yytext);
                     return T_NUM;
                 };
 

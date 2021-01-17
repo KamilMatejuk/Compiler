@@ -1,17 +1,9 @@
-using namespace std;
+#include "header.h"
+
 #include <string.h>
 #include <string>
+using namespace std;
 
-void yyerror(char const *s);
-
-enum errors {
-    BadArrayScope,      // error 0
-    AlreadyDeclaredVar, // error 1
-    UndeclaredVar,      // error 2, 8
-    UninitializedVar,   // error 3, 5
-    BadVarType,         // error 6, 7
-    UnrecognizedText,   // error 4
-};
 
 void err(errors e, string var){
     string err = "";
