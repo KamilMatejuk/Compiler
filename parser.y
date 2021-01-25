@@ -134,12 +134,12 @@ commands:
 command:
     identifier ":=" expression ";" {
         stringstream ss;
-        if(!is_declared($3)){
-            err(errors::UndeclaredVar, $3);
-        }
-        else if(!is_initialized($3)){
-            err(errors::UninitializedVar, $3);
-        }
+        // if(!is_declared($3)){
+        //     err(errors::UndeclaredVar, $3);
+        // }
+        // else if(!is_initialized($3)){
+        //     err(errors::UninitializedVar, $3);
+        // }
         ss << $3 << "\n";
         ss << save_variable_to_memmory($1, 'b', 'c') << "\n";
         $$ = ss.str();
@@ -231,8 +231,8 @@ command:
         stringstream ss;
         ss << "GET b \n";
         ss << save_variable_to_memmory($2, 'b', 'c') << "\n";
-        $$ = ss.str();
         initialize_variable($2);
+        $$ = ss.str();
     }
     | "WRITE" value ";" {
         stringstream ss;
@@ -603,7 +603,7 @@ int number_of_lines(string text){
 string remove_empty_lines(string text){
     text.erase(remove(text.begin(), text.end(), ';'), text.end());
     for (string::size_type i = text.size(); i > 1; i--) {
-        if(text[i] == text[i-1]){
+        if(text[i] == '\n' && text[i] == text[i-1]){
             text.erase(i, 1);
         }
     }

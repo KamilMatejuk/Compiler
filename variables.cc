@@ -1,5 +1,7 @@
 #include "header.h"
 
+#include <iostream>
+
 #include <string.h>
 #include <string>
 #include <vector>
@@ -38,10 +40,9 @@ bool is_initialized(string name){
 
 /* check if is declared, if type is correct and change to initialized */
 void initialize_variable(string name){
-    for(var v : vars) {
-        if(v.name == name){
-            v.initialized = true;
-        }
+    auto iter = std::find_if(vars.begin(), vars.end(), [&](var const & v) {return v.name == name;});
+    if(iter != vars.end()){
+        iter->initialized = true;
     }
 }
 
