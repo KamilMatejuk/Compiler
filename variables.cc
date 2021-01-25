@@ -9,7 +9,7 @@
 using namespace std;
 
 vector<var> vars = {};
-long long memmoryIterator = 0;
+long long memmoryIterator = 8;
 
 
 /* check if variable of given name was previously declared */

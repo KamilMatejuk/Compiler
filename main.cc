@@ -5,14 +5,15 @@
 
 using namespace std;
 
-extern string run_parser(FILE * input);
+extern string run_parser(FILE * input, bool debug);
 
 int main(int argc, char const * argv[]){
   FILE * input;
 
   // check args
-  if(argc != 3){
+  if(argc < 3 || argc > 5){
     cerr << "Please specify input and output files as respectively 2nd and 3rd argument" << endl;
+    cerr << "You can add --debug as a last argument, for debugging options";
     return -1;
   }
 
@@ -22,7 +23,8 @@ int main(int argc, char const * argv[]){
     cerr << "Couldn't open file " << argv[1] << endl;
     return -1;
   }
-  string machine_code = run_parser(input);
+  bool debug = (argc == 4 && string(argv[3]) == "--debug");
+  string machine_code = run_parser(input, debug);
   fclose(input);
 
   // save output to file

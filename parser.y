@@ -22,6 +22,7 @@ using namespace std;
 
 // created machine code
 string machine_code;
+bool debug;
 
 // methods
 int  yylex(void);
@@ -34,6 +35,9 @@ string create_constant_value(int value, char rejestr);
 
 int  number_of_lines(string text);
 string remove_empty_lines(string text);
+
+void show_vars();
+string add_comments(string text);
 
 /*
 ********************************************************************* 
@@ -150,7 +154,7 @@ command:
         ss << $6 << "\n";
         $$ = ss.str();
     }
-    | "IF" condition "THEN" commands "ENDIF" {
+    | "IF" condition "THEN" commands "ENDIF" { // działa
         int commands_1_lines = number_of_lines($4);
 
         stringstream ss;
@@ -221,17 +225,20 @@ command:
         remove_iterator($2);
         $$ = ss.str();
     }
-    | "READ" identifier ";" {
+    | "READ" identifier ";" { // działa
         stringstream ss;
-        ss << "GET b \n";
+        ss << "RESET a \n";
+        ss << "GET a \n";
+        ss << "LOAD b a \n";
         ss << save_variable_to_memmory($2, 'b', 'c') << "\n";
-        initialize_variable($2);
         $$ = ss.str();
     }
-    | "WRITE" value ";" {
+    | "WRITE" value ";" { // działa
         stringstream ss;
-        ss << get_variable_to_rejestr($2, 'b') << "\n";
-        ss << "PUT b" << "\n";
+        ss << get_variable_to_rejestr($2, 'a') << "\n";
+        ss << "RESET b \n";
+        ss << "STORE a b \n";
+        ss << "PUT b \n";
         $$ = ss.str();
     }
 
@@ -353,12 +360,12 @@ expression:
     }
 
 condition: // returns on rejestr b (1 is true, 0 is false)
-    value "=" value {
+    value "=" value { // działa
         stringstream ss;
         ss << get_variable_to_rejestr($1, 'c') << "\n";
-        ss << get_variable_to_rejestr($1, 'd') << "\n";
-        ss << "RESET d \n";
-        ss << "ADD d b \n";
+        ss << get_variable_to_rejestr($3, 'd') << "\n";
+        ss << "RESET b \n";
+        ss << "ADD b d \n";
         ss << "SUB b c \n";
         ss << "JZERO b 2 \n";
         ss << "JUMP 3 \n";
@@ -369,12 +376,12 @@ condition: // returns on rejestr b (1 is true, 0 is false)
         ss << "INC b \n";
         $$ = ss.str();
     }
-    | value "!=" value {
+    | value "!=" value { // działa
         stringstream ss;
         ss << get_variable_to_rejestr($1, 'c') << "\n";
-        ss << get_variable_to_rejestr($1, 'd') << "\n";
-        ss << "RESET d \n";
-        ss << "ADD d b \n";
+        ss << get_variable_to_rejestr($3, 'd') << "\n";
+        ss << "RESET b \n";
+        ss << "ADD b d \n";
         ss << "SUB b c \n";
         ss << "JZERO b 2 \n";
         ss << "JUMP 3 \n";
@@ -384,43 +391,58 @@ condition: // returns on rejestr b (1 is true, 0 is false)
         ss << "INC b \n";
         $$ = ss.str();
     }
-    | value "<" value {
+    | value "<" value { // działa
         stringstream ss;
         ss << get_variable_to_rejestr($1, 'c') << "\n";
-        ss << get_variable_to_rejestr($1, 'd') << "\n";
-        ss << "SUB c b \n";
-        ss << "SUB b b \n";
-        ss << "JZERO c 2 \n";
+        ss << get_variable_to_rejestr($3, 'd') << "\n";
+        ss << "SUB d c \n";
+        ss << "RESET b \n";
+        ss << "JZERO d 2 \n"; // d <= c
         ss << "INC b \n";
         $$ = ss.str();
     }
-    | value ">" value {
+    | value ">" value { // działa
         stringstream ss;
         ss << get_variable_to_rejestr($1, 'c') << "\n";
-        ss << get_variable_to_rejestr($1, 'd') << "\n";
-        ss << "SUB b c \n";
-        ss << "JZERO b 2 \n";
+        ss << get_variable_to_rejestr($3, 'd') << "\n";
+        ss << "SUB c d \n";
+        ss << "RESET b \n";
+        ss << "JZERO c 2 \n"; // c <= d
         ss << "INC b \n";
         $$ = ss.str();
     }
-    | value "<=" value {
+    | value "<=" value { // działa
         stringstream ss;
         ss << get_variable_to_rejestr($1, 'c') << "\n";
-        ss << get_variable_to_rejestr($1, 'd') << "\n";
+        ss << get_variable_to_rejestr($3, 'd') << "\n";
+        ss << "RESET b \n";
+        ss << "ADD b d \n";
         ss << "SUB b c \n";
-        ss << "JZERO b 3 \n";
-        ss << "SUB b b \n";
+        ss << "JZERO b 4 \n"; // d <= c
+        ss << "RESET b \n";
+        ss << "INC b \n";
+        ss << "JUMP 5 \n"; // skok do końca
+        ss << "SUB c d \n";
+        ss << "RESET b \n";
+        ss << "JZERO c 2 \n"; // c <= d
         ss << "JUMP 2 \n";
         ss << "INC b \n";
         $$ = ss.str();
     }
-    | value ">=" value {
+    | value ">=" value { // działa
         stringstream ss;
         ss << get_variable_to_rejestr($1, 'c') << "\n";
-        ss << get_variable_to_rejestr($1, 'd') << "\n";
-        ss << "SUB c b \n";
-        ss << "JZERO c 3 \n";
-        ss << "SUB b b \n";
+        ss << get_variable_to_rejestr($3, 'd') << "\n";
+        ss << "RESET b \n";
+        ss << "ADD b c \n";
+        ss << "SUB b d \n";
+        ss << "JZERO b 4 \n"; // c <= d
+        ss << "RESET b \n";
+        ss << "INC b \n";
+        ss << "JUMP 5 \n"; // skok do końca
+        ss << "SUB d c \n";
+        ss << "RESET b \n";
+        ss << "JZERO d 2 \n"; // d <= c
         ss << "JUMP 2 \n";
         ss << "INC b \n";
         $$ = ss.str();
@@ -496,11 +518,18 @@ iterator:
 *********************************************************************
 */
 
-string run_parser(FILE * data){
+string run_parser(FILE * data, bool d){
+    debug = d;
     yyset_in(data);
     yyparse();
+    show_vars();
 
-    return remove_empty_lines(machine_code);
+    machine_code = remove_empty_lines(machine_code);
+    if(debug){
+        machine_code = add_comments(machine_code);
+    }
+
+    return machine_code;
 }
 
 /*
@@ -514,7 +543,8 @@ string get_variable_to_rejestr(string name, char rejestr){
     stringstream ss;
     switch(t.type){
         case found_var_type::RegularInteger: {
-            return create_constant_value(t.number, 'a');
+            /* return create_constant_value(t.number, 'a'); */
+            return create_constant_value(t.number, rejestr);
         }
         case found_var_type::VariableInteger: {
             ss << create_constant_value(t.v1.memmoryIndex, 'a');
@@ -534,6 +564,7 @@ string get_variable_to_rejestr(string name, char rejestr){
             ss << "SUB " << rejestr << " a \n";
             ss << create_constant_value(t.v1.memmoryIndex, 'a');
             ss << "ADD a " << rejestr << "\n";
+            ss << "LOAD " << rejestr << " a \n";
             return ss.str();
         }
         case found_var_type::NotRecognisable: {
@@ -565,6 +596,9 @@ string save_variable_to_memmory(string name, char rejestr1, char rejestr2){
             return "\n";
         }
         case found_var_type::VariableInteger: {
+            if(is_iterator(t.v1.name)){
+                err(errors::BadVarType, t.v1.name);
+            }
             initialize_variable(t.v1.name);
             ss << create_constant_value(t.v1.memmoryIndex, 'a');
             ss << "STORE " << rejestr1 << " a \n";
@@ -628,7 +662,7 @@ string create_constant_value(int value, char rejestr){
     bin.erase(0, bin.find_first_not_of('0'));
     /* create value in rejestr */
 	stringstream ss;
-	ss << "SUB " << rejestr << " " << rejestr << "\n";
+	ss << "RESET " << rejestr << "\n";
     if(bin.length() > 0){
         for(string::size_type i = 0; i < bin.length(); i++){
             if(bin[i] == '1'){
@@ -640,4 +674,61 @@ string create_constant_value(int value, char rejestr){
         }
     }
     return ss.str();
+}
+
+
+/*
+*********************************************************************
+************************ debugging helpers **************************
+*********************************************************************
+*/
+
+void show_vars(){
+    cout << endl;
+    cout << "name \tmemmoryIndex \tinitialized \titerator \tvar_type \tscope_start \tscope_end" << endl;
+    for(var v : vars){
+        cout << v.name << " \t";
+        cout << v.memmoryIndex << " \t\t";
+        cout << v.initialized << " \t\t";
+        cout << v.iterator << " \t\t";
+        cout << v.var_type << " \t\t";
+        cout << v.scope_start << " \t\t";
+        cout << v.scope_end << endl;
+    }
+    cout << endl;
+    cout << endl;
+}
+
+string add_comments(string text){
+    string with_comments = "";
+    istringstream iss(text);
+    for (string line; getline(iss, line); ){
+
+        // split line
+        vector<string> v;
+        size_t pos = line.find(' ');
+        size_t initialPos = 0;
+        while(pos != std::string::npos) {
+            v.push_back(line.substr(initialPos, pos - initialPos));
+            initialPos = pos + 1;
+            pos = line.find(' ', initialPos);
+        }
+        // add comment
+        if(v.size() >= 2 && v[0] == "GET"){
+            with_comments += line + "\t\t (p[" + v[1] + "] <- wpisana wartość) \n";
+        }
+        else if(v.size() >= 2 && v[0] == "PUT"){
+            with_comments += line + "\t\t (wyświetla p[" + v[1] + "]) \n";
+        }
+        else if(v.size() >= 3 && v[0] == "LOAD"){
+            with_comments += line + "\t (" + v[1] + " <- p[" + v[2] + "]) \n";
+        }
+        else if(v.size() >= 3 && v[0] == "STORE"){
+            with_comments += line + "\t (p[" + v[2] + "] <- " + v[1] + ") \n";
+        }
+        else {
+            with_comments += line + "\n";
+        }
+    }
+    return with_comments;
 }
