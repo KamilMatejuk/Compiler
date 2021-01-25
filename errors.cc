@@ -11,7 +11,7 @@ extern int yylineno;
 
 void yyerror(char const *s){
     if(s == "syntax error"){
-        s = "Unrecognisable text";
+        s = "Unrecognizable text";
     }
     cerr << "\nLine " << yylineno << ": " << s << endl;
     exit(-1);
@@ -38,7 +38,7 @@ void err(errors e, string var){
             break;
         case errors::UnrecognizedText:
         default:
-            err = "Couldn't recognise text '" + (string)var + "'";
+            err = "Couldn't recognize text '" + (string)var + "'";
             break;
     }
     yyerror(err.c_str());

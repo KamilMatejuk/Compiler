@@ -134,12 +134,6 @@ commands:
 command:
     identifier ":=" expression ";" {
         stringstream ss;
-        // if(!is_declared($3)){
-        //     err(errors::UndeclaredVar, $3);
-        // }
-        // else if(!is_initialized($3)){
-        //     err(errors::UninitializedVar, $3);
-        // }
         ss << $3 << "\n";
         ss << save_variable_to_memmory($1, 'b', 'c') << "\n";
         $$ = ss.str();
@@ -193,7 +187,7 @@ command:
         stringstream ss;
         ss << get_variable_to_rejestr($6, 'c');
         ss << get_variable_to_rejestr($4, 'b');
-        ss << save_iterator_to_memmory("iter" + $2, 'c');
+        ss << save_iterator_to_memmory($2, 'c');
         ss << "DEC a \n";
         ss << "STORE b c \n";
         ss << $8;
@@ -204,8 +198,8 @@ command:
         ss << "JZERO c 3 \n";
         ss << "INC b \n";
         ss << "JUMP -" << (commands_1_lines + 6) << "\n";
-        $$ = ss.str();
         remove_iterator($2);
+        $$ = ss.str();
     }
     | "FOR" iterator "FROM" value "DOWNTO" value "DO" commands "ENDFOR" {
         int commands_1_lines = number_of_lines($8);
@@ -213,7 +207,7 @@ command:
         stringstream ss;
         ss << get_variable_to_rejestr($6, 'c');
         ss << get_variable_to_rejestr($4, 'b');
-        ss << save_iterator_to_memmory("iter" + $2, 'c');
+        ss << save_iterator_to_memmory($2, 'c');
         ss << "DEC a \n";
         ss << "STORE b c \n";
         ss << $8;
@@ -224,8 +218,8 @@ command:
         ss << "JZERO c 3 \n";
         ss << "DEC b \n";
         ss << "JUMP -" << (commands_1_lines + 6) << "\n";
-        $$ = ss.str();
         remove_iterator($2);
+        $$ = ss.str();
     }
     | "READ" identifier ";" {
         stringstream ss;
@@ -449,31 +443,48 @@ value:
 
 identifier:
     T_PIDENTIFIER {
+        for(var v : vars){
+            if(v.name == $1 && v.var_type != var::integer){
+                err(errors::BadVarType, $1);
+            }
+        }
         $$ = $1;
     }
     | T_PIDENTIFIER "(" T_PIDENTIFIER ")" {
+        for(var v : vars){
+            if(v.name == $1 && v.var_type != var::array){
+                err(errors::BadVarType, $1);
+            }
+        }
+        if(!is_declared($3)){
+            err(errors::UndeclaredVar, $3);
+        }
+        else if(!is_initialized($3)){
+            err(errors::UninitializedVar, $3);
+        }
         stringstream ss;
         ss << $1 << "(" << $3 << ")";
         $$ = ss.str();
     }
     | T_PIDENTIFIER "(" T_NUM ")" {
+        for(var v : vars){
+            if(v.name == $1 && v.var_type != var::array){
+                err(errors::BadVarType, $1);
+            }
+        }
         stringstream ss;
         ss << $1 << "(" << $3 << ")";
         $$ = ss.str();
     }
 
-iterator: // saved on rejestr f
+iterator:
     T_PIDENTIFIER {
         if(is_declared($1) || is_iterator($1)){
             err(errors::AlreadyDeclaredVar, $1);
         }
         declare_variable_int($1);
-        for(var v : vars) {
-            if(v.name == $1){
-                v.initialized = true;
-                v.iterator = true;
-            }
-        }
+        initialize_variable($1);
+        set_as_iterator($1);
         $$ = $1;
     }
 
@@ -551,8 +562,7 @@ string save_variable_to_memmory(string name, char rejestr1, char rejestr2){
     stringstream ss;
     switch(t.type){
         case found_var_type::RegularInteger: {
-            /* TODO */
-            return name;
+            return "\n";
         }
         case found_var_type::VariableInteger: {
             initialize_variable(t.v1.name);

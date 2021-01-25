@@ -40,6 +40,7 @@ extern long long memmoryIterator;
 
 bool is_declared(string name);
 bool is_iterator(string name);
+void set_as_iterator(string name);
 void remove_iterator(string name);
 bool is_initialized(string name);
 void initialize_variable(string name);

@@ -38,11 +38,13 @@ bool is_initialized(string name){
     return false;
 }
 
-/* check if is declared, if type is correct and change to initialized */
+/* check if is declared and change to initialized */
 void initialize_variable(string name){
     auto iter = std::find_if(vars.begin(), vars.end(), [&](var const & v) {return v.name == name;});
     if(iter != vars.end()){
         iter->initialized = true;
+    } else {
+        err(errors::UndeclaredVar, name);
     }
 }
 
@@ -54,6 +56,24 @@ bool is_iterator(string name){
         }
     }
     return false;
+}
+
+/* check if is declared and mark as iterator */
+void set_as_iterator(string name){
+    auto iter = std::find_if(vars.begin(), vars.end(), [&](var const & v) {return v.name == name;});
+    if(iter != vars.end()){
+        iter->iterator = true;
+    } else {
+        err(errors::UndeclaredVar, name);
+    }
+}
+
+/* delete variable after its scope */
+void remove_iterator(string name){
+    auto iter = std::find_if(vars.begin(), vars.end(), [&](var const & v) {return v.name == name;});
+    if(iter != vars.end()){
+        vars.erase(iter);
+    }
 }
 
 /* check if used type is correct, and returns only name of variable */
@@ -133,20 +153,6 @@ bool is_number(string& s){
 }
 
 
-/* delete variable after its scope */
-void remove_iterator(string name){
-    int i = 0;
-    for(var v : vars) {
-        if(v.name == name){
-            break;
-        }
-        i++;
-    }
-    vars.erase(vars.begin() + (i - 1));
-}
-
-
-
 /* check if the name is not taken, and add int variable into table */
 void declare_variable_int(string name){
     /* not used name */
@@ -164,7 +170,7 @@ void declare_variable_int(string name){
 /* check if the name is not taken, and add array variable into table */
 void declare_variable_array(string name, int start, int end){
     /* correct scope */
-    if(start >= end){
+    if(start > end){
         err(errors::BadArrayScope, name);
     }
     /* not used name */
@@ -178,5 +184,5 @@ void declare_variable_array(string name, int start, int end){
     v.scope_start = start;
     v.scope_end = end;
     vars.push_back(v);
-    memmoryIterator += end - start;
+    memmoryIterator += end - start + 1;
 }
