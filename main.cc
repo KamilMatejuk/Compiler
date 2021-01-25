@@ -33,8 +33,10 @@ int main(int argc, char const * argv[]){
   output << machine_code;
   output.close();
 
-  // show output (temporarly)
-  cout << machine_code << endl;;
+  // show output
+  if(debug){
+    cout << machine_code << endl;
+  }
 
   return 0;
 }

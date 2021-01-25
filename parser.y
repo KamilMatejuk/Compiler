@@ -136,13 +136,13 @@ commands:
     }
 
 command:
-    identifier ":=" expression ";" {
+    identifier ":=" expression ";" { // działa
         stringstream ss;
         ss << $3 << "\n";
         ss << save_variable_to_memmory($1, 'b', 'c') << "\n";
         $$ = ss.str();
     }
-    | "IF" condition "THEN" commands "ELSE" commands "ENDIF" {
+    | "IF" condition "THEN" commands "ELSE" commands "ENDIF" { // działa
         int commands_1_lines = number_of_lines($4);
         int commands_2_lines = number_of_lines($6);
 
@@ -242,25 +242,34 @@ command:
         $$ = ss.str();
     }
 
-expression:
+expression: // returns on rejestr b
     value {
         $$ = get_variable_to_rejestr($1, 'b');
     }
-    | value "+" value {
+    | value "+" value { // działa
         stringstream ss;
-        ss << get_variable_to_rejestr($1, 'b') << "\n";
-        ss << get_variable_to_rejestr($3, 'c') << "\n";
-        ss << "ADD b c \n";
+        if($1 == $3){
+            ss << get_variable_to_rejestr($1, 'b') << "\n";
+            ss << "SHL b \n";
+        } else {
+            ss << get_variable_to_rejestr($1, 'b') << "\n";
+            ss << get_variable_to_rejestr($3, 'c') << "\n";
+            ss << "ADD b c \n";
+        }
         $$ = ss.str();
     }
-    | value "-" value {
+    | value "-" value { // działa
         stringstream ss;
-        ss << get_variable_to_rejestr($1, 'b') << "\n";
-        ss << get_variable_to_rejestr($3, 'c') << "\n";
-        ss << "SUB b c \n";
+        if($1 == $3){
+            ss << "RESET b \n";
+        } else {
+            ss << get_variable_to_rejestr($1, 'b') << "\n";
+            ss << get_variable_to_rejestr($3, 'c') << "\n";
+            ss << "SUB b c \n";
+        }
         $$ = ss.str();
     }
-    | value "*" value {
+    | value "*" value { // działa
         stringstream ss;
         ss << get_variable_to_rejestr($1, 'b') << "\n";
         ss << get_variable_to_rejestr($3, 'c') << "\n";
@@ -275,87 +284,96 @@ expression:
         ss << "JUMP 3 \n";
         ss << "RESET b \n";
         ss << "ADD b d \n;";
-        ss << "SUB d d \n";
-        ss << "JZERO b 11 \n";
+        ss << "RESET d \n";
+        ss << "JZERO b 9 \n";
         ss << "JODD b 4 \n";
         ss << "SHR b \n";
-        ss << "ADD c c \n";
+        ss << "SHL c \n";
         ss << "JUMP -4 \n";
         ss << "ADD d c \n";
         ss << "SHR b \n";
-        ss << "ADD c c \n";
+        ss << "SHL c \n";
         ss << "JUMP -8 \n";
         ss << "RESET b \n";
         ss << "ADD b d \n;";
         $$ = ss.str();
     }
-    | value "/" value {
+    | value "/" value { // działa
         stringstream ss;
-        ss << get_variable_to_rejestr($1, 'b') << "\n";
-        ss << get_variable_to_rejestr($3, 'c') << "\n";
-        ss << "JZERO c 25 \n"; // cannot devide by 0
-        ss << "RESET d \n";
-        ss << "ADD d b \n";
-        ss << "RESET f \n";
-        ss << "INC f \n";
-        ss << "SUB b c \n";
-        ss << "JZERO b 6 \n";
-        ss << "RESET b \n";
-        ss << "ADD b d \n";
-        ss << "SHL c \n";
-        ss << "SHL f \n";
-        ss << "JUMP -6 \n";
-        ss << "RESET e \n";
-        ss << "ADD e c \n";
-        ss << "SUB c d \n";
-        ss << "JZERO c 2 \n";
-        ss << "JUMP 3 \n";
-        ss << "SUB d e \n";
-        ss << "ADD b f \n";
-        ss << "RESET c \n";
-        ss << "ADD c e \n";
-        ss << "SHR c \n";
-        ss << "SHR f \n";
-        ss << "JZERO f 3 \n";
-        ss << "JUMP -12 \n";
-        ss << "SUB b b \n";
+        if($1 == $3){
+            ss << "RESET b \n";
+            ss << "INC b \n";
+        } else {
+            ss << get_variable_to_rejestr($1, 'b') << "\n";
+            ss << get_variable_to_rejestr($3, 'c') << "\n";
+            ss << "JZERO c 25 \n"; // cannot devide by 0
+            ss << "RESET d \n";
+            ss << "ADD d b \n";
+            ss << "RESET f \n";
+            ss << "INC f \n";
+            ss << "SUB b c \n";
+            ss << "JZERO b 6 \n";
+            ss << "RESET b \n";
+            ss << "ADD b d \n";
+            ss << "SHL c \n";
+            ss << "SHL f \n";
+            ss << "JUMP -6 \n";
+            ss << "RESET e \n";
+            ss << "ADD e c \n";
+            ss << "SUB c d \n";
+            ss << "JZERO c 2 \n";
+            ss << "JUMP 3 \n";
+            ss << "SUB d e \n";
+            ss << "ADD b f \n";
+            ss << "RESET c \n";
+            ss << "ADD c e \n";
+            ss << "SHR c \n";
+            ss << "SHR f \n";
+            ss << "JZERO f 3 \n";
+            ss << "JUMP -12 \n";
+            ss << "RESET b \n";
+        }
         $$ = ss.str();
     }
-    | value "%" value {
+    | value "%" value { // działa
         stringstream ss;
-        ss << get_variable_to_rejestr($1, 'b') << "\n";
-        ss << get_variable_to_rejestr($3, 'c') << "\n";
-        ss << "JZERO c 30 \n"; // modulo of 0 is 0
-        ss << "RESET d \n";
-        ss << "ADD d b \n";
-        ss << "SUB f f \n";
-        ss << "INC f \n";
-        ss << "SUB b c \n";
-        ss << "JZERO b 6 \n";
-        ss << "RESET b \n";
-        ss << "ADD b d \n";
-        ss << "ADD c c \n";
-        ss << "ADD f f \n";
-        ss << "JUMP -6 \n";
-        ss << "RESET e \n";
-        ss << "ADD e c \n";
-        ss << "SUB c d \n";
-        ss << "JZERO c 2 \n";
-        ss << "JUMP 3 \n";
-        ss << "SUB d e \n";
-        ss << "ADD b f \n";
-        ss << "RESET c \n";
-        ss << "ADD c e \n";
-        ss << "SHR c \n";
-        ss << "SHR f \n";
-        ss << "JZERO f 4 \n";
-        ss << "JUMP -11 \n";
-        ss << "SUB b b \n";
-        ss << "JUMP 3 \n";
-        ss << "RESET b \n";
-        ss << "ADD b d \n";
-        ss << "JUMP 2 \n";
-        ss << "SUB b b \n";
+        if($1 == $3){
+            ss << "RESET b \n";
+        } else {
+            ss << get_variable_to_rejestr($1, 'b') << "\n";
+            ss << get_variable_to_rejestr($3, 'c') << "\n";
+            ss << "JZERO c 30 \n"; // modulo of 0 is 0
+            ss << "RESET d \n";
+            ss << "ADD d b \n";
+            ss << "RESET f \n";
+            ss << "INC f \n";
+            ss << "SUB b c \n";
+            ss << "JZERO b 6 \n";
+            ss << "RESET b \n";
+            ss << "ADD b d \n";
+            ss << "SHL c \n";
+            ss << "SHL f \n";
+            ss << "JUMP -6 \n";
+            ss << "RESET e \n";
+            ss << "ADD e c \n";
+            ss << "SUB c d \n";
+            ss << "JZERO c 2 \n";
+            ss << "JUMP 3 \n";
+            ss << "SUB d e \n";
+            ss << "ADD b f \n";
+            ss << "RESET c \n";
+            ss << "ADD c e \n";
+            ss << "SHR c \n";
+            ss << "SHR f \n";
+            ss << "JZERO f 4 \n";
+            ss << "JUMP -12 \n";
+            ss << "RESET b \n";
+            ss << "JUMP 3 \n";
+            ss << "RESET b \n";
+            ss << "ADD b d \n";
+            ss << "JUMP 2 \n";
+            ss << "RESET b \n";
+        }
         $$ = ss.str();
     }
 
@@ -522,10 +540,10 @@ string run_parser(FILE * data, bool d){
     debug = d;
     yyset_in(data);
     yyparse();
-    show_vars();
 
     machine_code = remove_empty_lines(machine_code);
     if(debug){
+        show_vars();
         machine_code = add_comments(machine_code);
     }
 
@@ -685,6 +703,7 @@ string create_constant_value(int value, char rejestr){
 
 void show_vars(){
     cout << endl;
+    cout << "\t\t\t\t\t\tVARIABLES" << endl;
     cout << "name \tmemmoryIndex \tinitialized \titerator \tvar_type \tscope_start \tscope_end" << endl;
     for(var v : vars){
         cout << v.name << " \t";
@@ -708,11 +727,12 @@ string add_comments(string text){
         vector<string> v;
         size_t pos = line.find(' ');
         size_t initialPos = 0;
-        while(pos != std::string::npos) {
+        while(pos != string::npos) {
             v.push_back(line.substr(initialPos, pos - initialPos));
             initialPos = pos + 1;
             pos = line.find(' ', initialPos);
         }
+        v.push_back(line.substr(initialPos, min(pos, line.size()) - initialPos + 1));
         // add comment
         if(v.size() >= 2 && v[0] == "GET"){
             with_comments += line + "\t\t (p[" + v[1] + "] <- wpisana wartość) \n";
@@ -725,6 +745,12 @@ string add_comments(string text){
         }
         else if(v.size() >= 3 && v[0] == "STORE"){
             with_comments += line + "\t (p[" + v[2] + "] <- " + v[1] + ") \n";
+        }
+        else if(v.size() >= 2 && v[0] == "SHR"){
+            with_comments += line + "\t\t (" + v[1] + " <- " + v[1] + " / 2) \n";
+        }
+        else if(v.size() >= 2 && v[0] == "SHL"){
+            with_comments += line + "\t\t (" + v[1] + " <- " + v[1] + " * 2) \n";
         }
         else {
             with_comments += line + "\n";

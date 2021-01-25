@@ -18,7 +18,7 @@ int yylex();
                     yylval = strdup(yytext);
                     return T_PIDENTIFIER;
                 };
-\-?[0-9]+       {
+[0-9]+       {
                     yylval = strdup(yytext);
                     return T_NUM;
                 };
