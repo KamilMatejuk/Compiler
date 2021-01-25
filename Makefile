@@ -5,11 +5,11 @@ FLAGS = -W -pedantic -std=c++17 -O3
 all: kompilator
 
 kompilator: lexer.o parser.o variables.o errors.o  main.o
-	$(CXX) $^ -o $@
+	g++ $^ -o $@
 	strip $@
 
 %.o: %.cc
-	$(CXX) $(FLAGS) -c $^
+	g++ $(FLAGS) -c $^
 
 lexer.cc: lexer.l parser.hh
 	flex -o $@ $<
