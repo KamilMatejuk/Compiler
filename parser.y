@@ -163,7 +163,7 @@ command:
         ss << $4 << "\n";
         $$ = ss.str();
     }
-    | "WHILE" condition "DO" commands "ENDWHILE" {
+    | "WHILE" condition "DO" commands "ENDWHILE" { // działa
         int condition_1_lines = number_of_lines($2);
         int commands_1_lines = number_of_lines($4);
 
@@ -174,54 +174,79 @@ command:
         ss << "JUMP -" << (condition_1_lines + commands_1_lines + 1) << "\n";
         $$ = ss.str();
     }
-    | "REPEAT" commands "UNTIL" condition ";" {
+    | "REPEAT" commands "UNTIL" condition ";" { // działa
         int commands_1_lines = number_of_lines($2);
         int condition_1_lines = number_of_lines($4);
 
         stringstream ss;
         ss << $2 << "\n";
         ss << $4 << "\n";
-        ss << "JZERO b 2 \n";
-        ss << "JUMP -" << (commands_1_lines + condition_1_lines + 1) << "\n";
+        ss << "JZERO b -" << (commands_1_lines + condition_1_lines) << "\n";
         $$ = ss.str();
     }
-    | "FOR" iterator "FROM" value "TO" value "DO" commands "ENDFOR" {
+    | "FOR" iterator "FROM" value "TO" value "DO" commands "ENDFOR" { // działa
         int commands_1_lines = number_of_lines($8);
+        int var_1_lines = number_of_lines(get_variable_to_rejestr($2, 'b'));
+        int var_2_lines = number_of_lines(get_variable_to_rejestr($4, 'b'));
+        int var_3_lines = number_of_lines(get_variable_to_rejestr($6, 'c'));
+        int iter_1_lines = number_of_lines(save_iterator_to_memmory($2, 'b'));
 
         stringstream ss;
-        ss << get_variable_to_rejestr($6, 'c');
+        // check if $4 <= $6
+        ss << get_variable_to_rejestr($4, 'b') << "\n";
+        ss << get_variable_to_rejestr($6, 'c') << "\n";
+        ss << "RESET a \n";
+        ss << "ADD a c \n";
+        ss << "SUB a b \n";
+        ss << "JZERO a 2 \n"; // c <= b
+        ss << "JUMP 4 \n";
+        ss << "SUB b c \n";
+        ss << "JZERO b 2 \n"; // b <= c
+        ss << "JUMP " << (var_2_lines + iter_1_lines + commands_1_lines + var_3_lines + var_1_lines + 5) << " \n";
+        // run loop
         ss << get_variable_to_rejestr($4, 'b');
-        ss << save_iterator_to_memmory($2, 'c');
-        ss << "DEC a \n";
-        ss << "STORE b c \n";
+        ss << save_iterator_to_memmory($2, 'b');
         ss << $8;
+        ss << get_variable_to_rejestr($6, 'c');
         ss << get_variable_to_rejestr($2, 'b');
-        ss << "INC a \n";
-        ss << "LOAD c c \n";
         ss << "SUB c b \n";
         ss << "JZERO c 3 \n";
         ss << "INC b \n";
-        ss << "JUMP -" << (commands_1_lines + 6) << "\n";
+        ss << "JUMP -" << (commands_1_lines + var_3_lines + var_1_lines + var_1_lines + 3) << "\n";
         remove_iterator($2);
         $$ = ss.str();
     }
-    | "FOR" iterator "FROM" value "DOWNTO" value "DO" commands "ENDFOR" {
+    | "FOR" iterator "FROM" value "DOWNTO" value "DO" commands "ENDFOR" { // działa
         int commands_1_lines = number_of_lines($8);
+        int var_1_lines = number_of_lines(get_variable_to_rejestr($2, 'b'));
+        int var_2_lines = number_of_lines(get_variable_to_rejestr($4, 'b'));
+        int var_3_lines = number_of_lines(get_variable_to_rejestr($6, 'c'));
+        int iter_1_lines = number_of_lines(save_iterator_to_memmory($2, 'b'));
 
         stringstream ss;
-        ss << get_variable_to_rejestr($6, 'c');
-        ss << get_variable_to_rejestr($4, 'b');
-        ss << save_iterator_to_memmory($2, 'c');
-        ss << "DEC a \n";
-        ss << "STORE b c \n";
-        ss << $8;
-        ss << get_variable_to_rejestr($2, 'b');
-        ss << "INC a \n";
-        ss << "LOAD c c \n";
+        // check if $6 <= $4
+        ss << get_variable_to_rejestr($4, 'b') << "\n";
+        ss << get_variable_to_rejestr($6, 'c') << "\n";
+        ss << "RESET a \n";
+        ss << "ADD a b \n";
+        ss << "SUB a c \n";
+        ss << "JZERO a 2 \n"; // b <= c
+        ss << "JUMP 4 \n";
         ss << "SUB c b \n";
-        ss << "JZERO c 3 \n";
+        ss << "JZERO c 2 \n"; // c <= b
+        ss << "JUMP " << (var_2_lines + iter_1_lines + commands_1_lines + var_3_lines + var_1_lines + 7) << " \n";
+        // run loop
+        ss << get_variable_to_rejestr($4, 'b');
+        ss << save_iterator_to_memmory($2, 'b');
+        ss << $8;
+        ss << get_variable_to_rejestr($6, 'c');
+        ss << get_variable_to_rejestr($2, 'b');
+        ss << "RESET d \n";
+        ss << "ADD d b \n";
+        ss << "SUB d c \n";
+        ss << "JZERO d 3 \n";
         ss << "DEC b \n";
-        ss << "JUMP -" << (commands_1_lines + 6) << "\n";
+        ss << "JUMP -" << (commands_1_lines + var_3_lines + var_1_lines + var_1_lines + 5) << "\n";
         remove_iterator($2);
         $$ = ss.str();
     }
@@ -389,7 +414,7 @@ condition: // returns on rejestr b (1 is true, 0 is false)
         ss << "JUMP 3 \n";
         ss << "SUB c d \n";
         ss << "JZERO c 3 \n";
-        ss << "SUB b b \n";
+        ss << "RESET b \n";
         ss << "JUMP 2 \n";
         ss << "INC b \n";
         $$ = ss.str();
@@ -405,7 +430,7 @@ condition: // returns on rejestr b (1 is true, 0 is false)
         ss << "JUMP 3 \n";
         ss << "SUB c d \n";
         ss << "JZERO c 3 \n";
-        ss << "SUB b b \n";
+        ss << "RESET b \n";
         ss << "INC b \n";
         $$ = ss.str();
     }
@@ -524,6 +549,8 @@ iterator:
         }
         declare_variable_int($1);
         initialize_variable($1);
+        declare_variable_int($1 + "_iter");
+        initialize_variable($1 + "_iter");
         set_as_iterator($1);
         $$ = $1;
     }
@@ -545,6 +572,9 @@ string run_parser(FILE * data, bool d){
     if(debug){
         show_vars();
         machine_code = add_comments(machine_code);
+        cout << machine_code << endl;
+        cout << endl;
+        cout << "Total " << number_of_lines(machine_code) << " commands \n";
     }
 
     return machine_code;

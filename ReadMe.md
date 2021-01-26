@@ -6,10 +6,16 @@ Informatyka, W11
 ### **Projekt kompilatora (wersja alpha)**,
 ### **JFTT**
 
-Uruchomienie:
+Uruchomienie (zwykłe):
 ```
 $ make
 $ ./kompilator <nazwa pliku wejściowego> <nazwa pliku wyjściowego>
+```
+Uruchomienie (debugging):
+*wyświetla tabelę zmiennych, oraz generuje kod z komentarzami*
+```
+$ make
+$ ./kompilator <nazwa pliku wejściowego> <nazwa pliku wyjściowego> --debug
 ```
 
 Wymagane programy:
