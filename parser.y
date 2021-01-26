@@ -549,8 +549,6 @@ iterator:
         }
         declare_variable_int($1);
         initialize_variable($1);
-        declare_variable_int($1 + "_iter");
-        initialize_variable($1 + "_iter");
         set_as_iterator($1);
         $$ = $1;
     }
