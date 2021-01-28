@@ -1,3 +1,11 @@
+(setq markdown-xhtml-header-content
+"<style>
+    .km-color-1 { color: #fff; }
+    .km-color-2 { color: #f00; }
+    .km-color-3 { color: #0f0; }
+    .km-color-4 { color: #00f; }
+</style>")
+
 # Compiler
 
 This is a project, written to obtain a credit for a semester, in [Formal Languages and Translation Techniques](https://cs.pwr.edu.pl/gebala/dyd/jftt2020.html), a subject on V semester of Computer Science in [Wrocław University of Science and Technology](https://wppt.pwr.edu.pl/en/).
