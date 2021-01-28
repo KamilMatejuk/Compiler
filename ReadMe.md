@@ -16,9 +16,9 @@ Compiler should throw multiple types of errors (second declaration of variable, 
 
 ## Grammar
 Language can be descibed by the graph below:
-<pre><code>
-<span style="color: #f00;">program</span>         <span class="km-color-2">-></span> <span class="km-color-3">DECLARE</span> <span class="km-color-1">declarations</span> <span class="km-color-3">BEGIN</span> <span class="km-color-1">commands</span> <span class="km-color-3">END</span>
-                <span class="km-color-2">|</span>  <span class="km-color-3">BEGIN</span> <span class="km-color-1">commands</span> <span class="km-color-3">END</span>
+```
+program         -> DECLARE declarations BEGIN commands END
+                |  BEGIN commands END
 
 declarations    -> declarations , pidentifier
                 |  declarations , pidentifier (num :num )
@@ -58,7 +58,7 @@ value           -> num
 identifier      -> pidentifier
                 |  pidentifier ( pidentifier )
                 |  pidentifier (num )
-</code></pre>
+```
 
 Additionally language should fullfill the rules below:
 1. Arithmetic equations use only Natural numbers (e.g. a - b = max{ a - b, 0 }, a / 0 = 0, a % 0 = 0).
