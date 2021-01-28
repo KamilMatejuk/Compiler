@@ -1,0 +1,7 @@
+[ Error in line 6: uninitialized variable a ]
+DECLARE
+  a, b
+BEGIN
+  READ b;
+  b := a;
+END

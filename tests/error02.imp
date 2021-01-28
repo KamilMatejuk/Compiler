@@ -1,0 +1,7 @@
+[ Error in line 5: undeclared variable a ]
+DECLARE
+  b
+BEGIN
+  READ a;
+  b := a;
+END

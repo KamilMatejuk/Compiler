@@ -1,0 +1,13 @@
+[ Error in line 6: undeclared variable i as upper bound of for loop ]
+DECLARE
+	c
+BEGIN
+	c := 0;
+	FOR i FROM 1 TO i DO
+		c := c + i;
+	ENDFOR
+
+	WRITE c;
+
+END
+

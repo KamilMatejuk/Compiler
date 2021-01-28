@@ -1,0 +1,28 @@
+[ dissect into prime factors ]
+DECLARE
+    n, m, rest, power, divisor
+BEGIN
+    READ n;
+    divisor := 2;
+    m := divisor * divisor;
+    WHILE n >= m DO
+        power := 0;
+        rest := n % divisor;
+        WHILE rest = 0 DO
+            n := n / divisor;
+            power := power + 1;
+            rest := n % divisor;
+        ENDWHILE
+        IF power > 0 THEN [ if found divisor ]
+            WRITE divisor;
+            WRITE power;
+        ELSE
+            divisor := divisor + 1;
+            m := divisor * divisor;
+        ENDIF
+    ENDWHILE
+    IF n != 1 THEN [ last divisor ]
+        WRITE n;
+        WRITE 1;
+    ENDIF
+END

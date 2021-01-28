@@ -1,0 +1,7 @@
+[ Error in line 3: second declaration of a ]
+DECLARE
+  a, b, a
+BEGIN
+  READ a;
+  b := a;
+END

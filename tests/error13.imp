@@ -1,0 +1,14 @@
+[ Error in line 8: modification of iterator inside loop ]
+DECLARE
+	c
+BEGIN
+	c := 0;
+	FOR i FROM 1 TO 100 DO
+		c := c + i;
+		i := i % 2;
+	ENDFOR
+
+	WRITE c;
+	
+END
+

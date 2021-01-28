@@ -1,0 +1,7 @@
+[ Error in line 3: unrecognizable text "1" ]
+DECLARE
+  a1, b
+BEGIN
+  READ a1;
+  b := a1;
+END

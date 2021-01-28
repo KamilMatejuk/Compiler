@@ -1,0 +1,7 @@
+[ Error in line 5: bad usage of variable b of type array ]
+DECLARE
+  a, b(10:10)
+BEGIN
+  b := 1;
+  a := b;
+END

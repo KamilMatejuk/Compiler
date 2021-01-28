@@ -1,0 +1,7 @@
+[ Error in line 6: bad usage of variable a of type integer ]
+DECLARE
+  a, b(1:20)
+BEGIN
+  a := 1;
+  a(1) := b(a);
+END

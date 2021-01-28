@@ -1,0 +1,8 @@
+[ Error in line 6: uninitialized variable a ]
+DECLARE
+  a, b(1:20), c
+BEGIN
+  b(1) := 1;
+  c := b(a);
+END
+

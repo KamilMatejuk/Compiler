@@ -1,0 +1,7 @@
+[ Error in line 3: incorrect scope of array b ]
+DECLARE
+  a, b(11:10)
+BEGIN
+  b(10) := 1;
+  a := b(11);
+END

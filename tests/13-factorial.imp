@@ -1,0 +1,31 @@
+[ factorial.imp
+    Example test data:
+    1. ? 100
+        > {as in 11-factorial.imp}
+    2. ? 1000
+        > {as in 11-factorial.imp}
+]
+[ 
+    Time of execution should not differ dramatically from 11-factorial.imp
+]
+DECLARE
+	fact, r, n, k 
+BEGIN
+	READ n;
+	fact := 1;
+    k := 1;
+    REPEAT
+        r := k % 2;  
+        IF r != 0 THEN
+		    fact := fact * k;
+        ELSE
+            fact := k * fact;
+        ENDIF
+        k := k + 1;
+	UNTIL k > n;    
+    
+	WRITE fact;
+
+	[ Liczy n! ]
+END
+
