@@ -227,6 +227,7 @@ command:
         // end of loop
         ss << "JUMP -" << (var_1_lines + var_2_lines + commands_1_lines + var_1_lines + iter_1_lines + 14) << "\n";
         remove_iterator($2);
+        remove_iterator(iter_end);
         $$ = ss.str();
     }
     | "FOR" iterator "FROM" value "DOWNTO" value "DO" commands "ENDFOR" { // działa
@@ -271,8 +272,9 @@ command:
         ss << "DEC b \n";
         ss << save_iterator_to_memory($2, 'b') << "\n";
         // end of loop
-        ss << "JUMP -" << (var_1_lines + var_2_lines + commands_1_lines + var_1_lines + iter_1_lines + 14) << "\n";
+        ss << "JUMP -" << (var_1_lines + var_2_lines + commands_1_lines + var_1_lines + iter_1_lines + 15) << "\n";
         remove_iterator($2);
+        remove_iterator(iter_end);
         $$ = ss.str();
     }
     | "READ" identifier ";" { // działa
@@ -711,7 +713,7 @@ string save_variable_to_memory(string name, char rejestr1, char rejestr2){
             return ss.str();
         }
         case found_var_type::NotRecognisable: {
-            return "\n";
+            err(errors::UndeclaredVar, name);
         }
     }
     return "\n";
