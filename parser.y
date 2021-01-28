@@ -185,21 +185,26 @@ command:
         $$ = ss.str();
     }
     | "FOR" iterator "FROM" value "TO" value "DO" commands "ENDFOR" { // działa
-        declare_variable_int($6 + "_iter_end");
+        // create var for end of scope 
+        string iter_end = $6 + "_iter_end";
+        iter_end.erase(remove(iter_end.begin(), iter_end.end(), '('), iter_end.end());
+        iter_end.erase(remove(iter_end.begin(), iter_end.end(), ')'), iter_end.end());
+        declare_variable_int(iter_end);
+        // useful lengths of blocks
         int commands_1_lines = number_of_commands($8);
         int var_1_lines = number_of_commands(get_variable_to_rejestr($2, 'b'));
-        int var_2_lines = number_of_commands(get_variable_to_rejestr($6 + "_iter_end", 'c'));
+        int var_2_lines = number_of_commands(get_variable_to_rejestr(iter_end, 'c'));
         int iter_1_lines = number_of_commands(save_iterator_to_memmory($2, 'b'));
         stringstream ss;
         // save end
         ss << get_variable_to_rejestr($6, 'b') << "\n";
-        ss << save_iterator_to_memmory($6 + "_iter_end", 'b') << "\n";
+        ss << save_iterator_to_memmory(iter_end, 'b') << "\n";
         // save iterator
         ss << get_variable_to_rejestr($4, 'b') << "\n";
         ss << save_iterator_to_memmory($2, 'b') << "\n";
         // condition
         ss << get_variable_to_rejestr($2, 'c') << "\n";
-        ss << get_variable_to_rejestr($6 + "_iter_end", 'd') << "\n";
+        ss << get_variable_to_rejestr(iter_end, 'd') << "\n";
         ss << "RESET b \n";
         ss << "ADD b d \n";
         ss << "SUB b c \n";
@@ -225,21 +230,26 @@ command:
         $$ = ss.str();
     }
     | "FOR" iterator "FROM" value "DOWNTO" value "DO" commands "ENDFOR" { // działa
-        declare_variable_int($6 + "_iter_end");
+        // create var for end of scope 
+        string iter_end = $6 + "_iter_end";
+        iter_end.erase(remove(iter_end.begin(), iter_end.end(), '('), iter_end.end());
+        iter_end.erase(remove(iter_end.begin(), iter_end.end(), ')'), iter_end.end());
+        declare_variable_int(iter_end);
+        // useful lengths of blocks
         int commands_1_lines = number_of_commands($8);
         int var_1_lines = number_of_commands(get_variable_to_rejestr($2, 'b'));
-        int var_2_lines = number_of_commands(get_variable_to_rejestr($6 + "_iter_end", 'c'));
+        int var_2_lines = number_of_commands(get_variable_to_rejestr(iter_end, 'c'));
         int iter_1_lines = number_of_commands(save_iterator_to_memmory($2, 'b'));
         stringstream ss;
         // save end
         ss << get_variable_to_rejestr($6, 'b') << "\n";
-        ss << save_iterator_to_memmory($6 + "_iter_end", 'b') << "\n";
+        ss << save_iterator_to_memmory(iter_end, 'b') << "\n";
         // save iterator
         ss << get_variable_to_rejestr($4, 'b') << "\n";
         ss << save_iterator_to_memmory($2, 'b') << "\n";
         // condition
         ss << get_variable_to_rejestr($2, 'c') << "\n";
-        ss << get_variable_to_rejestr($6 + "_iter_end", 'd') << "\n";
+        ss << get_variable_to_rejestr(iter_end, 'd') << "\n";
         ss << "RESET b \n";
         ss << "ADD b c \n";
         ss << "SUB b d \n";
@@ -253,10 +263,11 @@ command:
         ss << "JUMP 2 \n";
         ss << "INC b \n";
         // end of condition
-        ss << "JZERO b " << (commands_1_lines + var_1_lines + iter_1_lines + 3) << "\n";
+        ss << "JZERO b " << (commands_1_lines + var_1_lines + iter_1_lines + 4) << "\n";
         // loop
         ss << $8 << "\n";
         ss << get_variable_to_rejestr($2, 'b') << "\n";
+        ss << "JZERO b " << (iter_1_lines + 3) << "\n";
         ss << "DEC b \n";
         ss << save_iterator_to_memmory($2, 'b') << "\n";
         // end of loop
@@ -627,10 +638,10 @@ string get_variable_to_rejestr(string name, char rejestr){
             return ss.str();
         }
         case found_var_type::NotRecognisable: {
-            return name;
+            return "\n";
         }
     }
-    return name;
+    return "\n";
 }
 
 
@@ -683,10 +694,10 @@ string save_variable_to_memmory(string name, char rejestr1, char rejestr2){
             return ss.str();
         }
         case found_var_type::NotRecognisable: {
-            return name;
+            return "\n";
         }
     }
-    return name;
+    return "\n";
 }
 
 int number_of_commands(string text){
