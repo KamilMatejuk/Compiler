@@ -15,16 +15,9 @@ Using [BISON](https://www.gnu.org/software/bison/) and [FLEX](http://manpages.ub
 Compiler should throw multiple types of errors (second declaration of variable, wrong usage of array, etc), as well as error location. In case of no errors, compiler should return code for attached virtual machine. Created code should be optimised to have the smallest possible time complexity (multiplication and division can be made in time logarythmic to value of arguments).
 
 ## Grammar
-(setq markdown-xhtml-header-content
-"<style>
-    .km-color-1 { color: #fff; }
-    .km-color-2 { color: #f00; }
-    .km-color-3 { color: #0f0; }
-    .km-color-4 { color: #00f; }
-</style>")
 Language can be descibed by the graph below:
 <pre><code>
-<span class="km-color-1">program</span>         <span class="km-color-2">-></span> <span class="km-color-3">DECLARE</span> <span class="km-color-1">declarations</span> <span class="km-color-3">BEGIN</span> <span class="km-color-1">commands</span> <span class="km-color-3">END</span>
+<span style="color: #f00;">program</span>         <span class="km-color-2">-></span> <span class="km-color-3">DECLARE</span> <span class="km-color-1">declarations</span> <span class="km-color-3">BEGIN</span> <span class="km-color-1">commands</span> <span class="km-color-3">END</span>
                 <span class="km-color-2">|</span>  <span class="km-color-3">BEGIN</span> <span class="km-color-1">commands</span> <span class="km-color-3">END</span>
 
 declarations    -> declarations , pidentifier
