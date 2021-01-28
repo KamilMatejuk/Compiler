@@ -29,8 +29,8 @@ int  yylex(void);
 void yyset_in(FILE * in_str);
 
 string get_variable_to_rejestr(string name, char rejestr);
-string save_iterator_to_memmory(string name, char rejestr);
-string save_variable_to_memmory(string name, char rejestr1, char rejestr2);
+string save_iterator_to_memory(string name, char rejestr);
+string save_variable_to_memory(string name, char rejestr1, char rejestr2);
 string create_constant_value(int value, char rejestr);
 
 int  number_of_commands(string text);
@@ -139,7 +139,7 @@ command:
     identifier ":=" expression ";" { // działa
         stringstream ss;
         ss << $3 << "\n";
-        ss << save_variable_to_memmory($1, 'b', 'c') << "\n";
+        ss << save_variable_to_memory($1, 'b', 'c') << "\n";
         $$ = ss.str();
     }
     | "IF" condition "THEN" commands "ELSE" commands "ENDIF" { // działa
@@ -194,14 +194,14 @@ command:
         int commands_1_lines = number_of_commands($8);
         int var_1_lines = number_of_commands(get_variable_to_rejestr($2, 'b'));
         int var_2_lines = number_of_commands(get_variable_to_rejestr(iter_end, 'c'));
-        int iter_1_lines = number_of_commands(save_iterator_to_memmory($2, 'b'));
+        int iter_1_lines = number_of_commands(save_iterator_to_memory($2, 'b'));
         stringstream ss;
         // save end
         ss << get_variable_to_rejestr($6, 'b') << "\n";
-        ss << save_iterator_to_memmory(iter_end, 'b') << "\n";
+        ss << save_iterator_to_memory(iter_end, 'b') << "\n";
         // save iterator
         ss << get_variable_to_rejestr($4, 'b') << "\n";
-        ss << save_iterator_to_memmory($2, 'b') << "\n";
+        ss << save_iterator_to_memory($2, 'b') << "\n";
         // condition
         ss << get_variable_to_rejestr($2, 'c') << "\n";
         ss << get_variable_to_rejestr(iter_end, 'd') << "\n";
@@ -223,7 +223,7 @@ command:
         ss << $8 << "\n";
         ss << get_variable_to_rejestr($2, 'b') << "\n";
         ss << "INC b \n";
-        ss << save_iterator_to_memmory($2, 'b') << "\n";
+        ss << save_iterator_to_memory($2, 'b') << "\n";
         // end of loop
         ss << "JUMP -" << (var_1_lines + var_2_lines + commands_1_lines + var_1_lines + iter_1_lines + 14) << "\n";
         remove_iterator($2);
@@ -239,14 +239,14 @@ command:
         int commands_1_lines = number_of_commands($8);
         int var_1_lines = number_of_commands(get_variable_to_rejestr($2, 'b'));
         int var_2_lines = number_of_commands(get_variable_to_rejestr(iter_end, 'c'));
-        int iter_1_lines = number_of_commands(save_iterator_to_memmory($2, 'b'));
+        int iter_1_lines = number_of_commands(save_iterator_to_memory($2, 'b'));
         stringstream ss;
         // save end
         ss << get_variable_to_rejestr($6, 'b') << "\n";
-        ss << save_iterator_to_memmory(iter_end, 'b') << "\n";
+        ss << save_iterator_to_memory(iter_end, 'b') << "\n";
         // save iterator
         ss << get_variable_to_rejestr($4, 'b') << "\n";
-        ss << save_iterator_to_memmory($2, 'b') << "\n";
+        ss << save_iterator_to_memory($2, 'b') << "\n";
         // condition
         ss << get_variable_to_rejestr($2, 'c') << "\n";
         ss << get_variable_to_rejestr(iter_end, 'd') << "\n";
@@ -269,7 +269,7 @@ command:
         ss << get_variable_to_rejestr($2, 'b') << "\n";
         ss << "JZERO b " << (iter_1_lines + 3) << "\n";
         ss << "DEC b \n";
-        ss << save_iterator_to_memmory($2, 'b') << "\n";
+        ss << save_iterator_to_memory($2, 'b') << "\n";
         // end of loop
         ss << "JUMP -" << (var_1_lines + var_2_lines + commands_1_lines + var_1_lines + iter_1_lines + 14) << "\n";
         remove_iterator($2);
@@ -280,7 +280,7 @@ command:
         ss << "RESET a \n";
         ss << "GET a \n";
         ss << "LOAD b a \n";
-        ss << save_variable_to_memmory($2, 'b', 'c') << "\n";
+        ss << save_variable_to_memory($2, 'b', 'c') << "\n";
         $$ = ss.str();
     }
     | "WRITE" value ";" { // działa
@@ -609,6 +609,12 @@ string run_parser(FILE * data, bool d){
 *********************************************************************
 */
 
+/**
+ * Load variable by name, from memory into rejestr
+ * 
+ * @param name name of variable.
+ * @param rejestr rejestr into which load variable.
+ */
 string get_variable_to_rejestr(string name, char rejestr){
     found_var_type t = check_var_type(name);
     stringstream ss;
@@ -617,22 +623,22 @@ string get_variable_to_rejestr(string name, char rejestr){
             return create_constant_value(t.number, rejestr);
         }
         case found_var_type::VariableInteger: {
-            ss << create_constant_value(t.v1.memmoryIndex, 'a') << "\n";
+            ss << create_constant_value(t.v1.memoryIndex, 'a') << "\n";
             ss << "LOAD " << rejestr << " a \n";
             return ss.str();
         }
         case found_var_type::VariableArrayWithNumericIndex: {
-            int n = t.v1.memmoryIndex + t.number - t.v1.scope_start;
+            int n = t.v1.memoryIndex + t.number - t.v1.scope_start;
             ss << create_constant_value(n, 'a') << "\n";
             ss << "LOAD " << rejestr << " a \n";
             return ss.str();
         }
         case found_var_type::VariableArrayWithVariableIndex: {
-            ss << create_constant_value(t.v2.memmoryIndex, 'a') << "\n";
+            ss << create_constant_value(t.v2.memoryIndex, 'a') << "\n";
             ss << "LOAD " << rejestr << " a \n";
             ss << create_constant_value(t.v1.scope_start, 'a') << "\n";
             ss << "SUB " << rejestr << " a \n";
-            ss << create_constant_value(t.v1.memmoryIndex, 'a') << "\n";
+            ss << create_constant_value(t.v1.memoryIndex, 'a') << "\n";
             ss << "ADD a " << rejestr << "\n";
             ss << "LOAD " << rejestr << " a \n";
             return ss.str();
@@ -644,12 +650,17 @@ string get_variable_to_rejestr(string name, char rejestr){
     return "\n";
 }
 
-
-string save_iterator_to_memmory(string name, char rejestr){
+/**
+ * Save iterator into memory by name, using value from rejestr
+ * 
+ * @param name name of variable.
+ * @param rejestr rejestr from which get value. 
+ */
+string save_iterator_to_memory(string name, char rejestr){
     for(var v : vars) {
         if(v.name == name){
             stringstream ss;
-            ss << create_constant_value(v.memmoryIndex, 'a') << "\n";
+            ss << create_constant_value(v.memoryIndex, 'a') << "\n";
             ss << "STORE " << rejestr << " a \n";
             return ss.str();
         }
@@ -657,8 +668,14 @@ string save_iterator_to_memmory(string name, char rejestr){
     return "\n";
 }
 
-
-string save_variable_to_memmory(string name, char rejestr1, char rejestr2){
+/**
+ * Save variable into memory by name, using value from rejestr1
+ * 
+ * @param name name of variable.
+ * @param rejestr1 rejestr from which get value.
+ * @param rejestr2 helper rejestr.
+ */
+string save_variable_to_memory(string name, char rejestr1, char rejestr2){
     found_var_type t = check_var_type(name);
     stringstream ss;
     switch(t.type){
@@ -670,13 +687,13 @@ string save_variable_to_memmory(string name, char rejestr1, char rejestr2){
                 err(errors::BadVarType, t.v1.name);
             }
             initialize_variable(t.v1.name);
-            ss << create_constant_value(t.v1.memmoryIndex, 'a') << "\n";
+            ss << create_constant_value(t.v1.memoryIndex, 'a') << "\n";
             ss << "STORE " << rejestr1 << " a \n";
             return ss.str();
         }
         case found_var_type::VariableArrayWithNumericIndex: {
             initialize_variable(t.v1.name);
-            int n = t.v1.memmoryIndex + t.number - t.v1.scope_start;
+            int n = t.v1.memoryIndex + t.number - t.v1.scope_start;
             ss << create_constant_value(n, 'a') << "\n";
             ss << "STORE " << rejestr1 << " a \n";
             return ss.str();
@@ -684,11 +701,11 @@ string save_variable_to_memmory(string name, char rejestr1, char rejestr2){
         case found_var_type::VariableArrayWithVariableIndex: {
             initialize_variable(t.v1.name);
 
-            ss << create_constant_value(t.v2.memmoryIndex, 'a') << "\n";
+            ss << create_constant_value(t.v2.memoryIndex, 'a') << "\n";
             ss << "LOAD " << rejestr2 << " a \n";
             ss << create_constant_value(t.v1.scope_start, 'a') << "\n";
             ss << "SUB " << rejestr2 << " a \n";
-            ss << create_constant_value(t.v1.memmoryIndex, 'a') << "\n";
+            ss << create_constant_value(t.v1.memoryIndex, 'a') << "\n";
             ss << "ADD a " << rejestr2 << "\n";
             ss << "STORE " << rejestr1 << " a \n";
             return ss.str();
@@ -700,30 +717,12 @@ string save_variable_to_memmory(string name, char rejestr1, char rejestr2){
     return "\n";
 }
 
-int number_of_commands(string text){
-    vector<string> possible_commands = {"GET", "PUT", "LOAD", "STORE", "ADD", "SUB", "RESET", "INC", "DEC", "SHR", "SHL", "JUMP", "JZERO", "JODD", "HALT"};
-    int commands = 0;
-    for(string command : possible_commands){
-        string::size_type pos = 0;
-        while ((pos = text.find(command, pos )) != string::npos) {
-            commands++;
-            pos += command.length();
-        }
-    }
-    return commands;
-}
-
-string remove_empty_lines(string text){
-    text.erase(remove(text.begin(), text.end(), ';'), text.end());
-    for (string::size_type i = text.size(); i > 1; i--) {
-        if(text[i] == '\n' && text[i] == text[i-1]){
-            text.erase(i, 1);
-        }
-    }
-    return text;
-}
-
-
+/**
+ * Load value to specified rejestr.
+ * 
+ * @param value value to be created.
+ * @param rejestr rejestr in which store value.
+ */
 string create_constant_value(int value, char rejestr){
     /* change to binary format */
     bitset<100> binary(value);
@@ -745,6 +744,38 @@ string create_constant_value(int value, char rejestr){
     return ss.str();
 }
 
+/**
+ * Calculate number of used commands.
+ * 
+ * @param text part of machine code to calculate from.
+ */
+int number_of_commands(string text){
+    vector<string> possible_commands = {"GET", "PUT", "LOAD", "STORE", "ADD", "SUB", "RESET", "INC", "DEC", "SHR", "SHL", "JUMP", "JZERO", "JODD", "HALT"};
+    int commands = 0;
+    for(string command : possible_commands){
+        string::size_type pos = 0;
+        while ((pos = text.find(command, pos )) != string::npos) {
+            commands++;
+            pos += command.length();
+        }
+    }
+    return commands;
+}
+
+/**
+ * Removed empty spaces from created machine code.
+ * 
+ * @param text part of machine code to edit.
+ */
+string remove_empty_lines(string text){
+    text.erase(remove(text.begin(), text.end(), ';'), text.end());
+    for (string::size_type i = text.size(); i > 1; i--) {
+        if(text[i] == '\n' && text[i] == text[i-1]){
+            text.erase(i, 1);
+        }
+    }
+    return text;
+}
 
 /*
 *********************************************************************
@@ -752,13 +783,16 @@ string create_constant_value(int value, char rejestr){
 *********************************************************************
 */
 
+/**
+ * Display a table with all stored variables (excluding iterators).
+ */
 void show_vars(){
     cout << endl;
     cout << "\t\t\t\t\t\tVARIABLES" << endl;
-    cout << "name \tmemmoryIndex \tinitialized \titerator \tvar_type \tscope_start \tscope_end" << endl;
+    cout << "name \tmemoryIndex \tinitialized \titerator \tvar_type \tscope_start \tscope_end" << endl;
     for(var v : vars){
         cout << v.name << " \t";
-        cout << v.memmoryIndex << " \t\t";
+        cout << v.memoryIndex << " \t\t";
         cout << v.initialized << " \t\t";
         cout << v.iterator << " \t\t";
         cout << v.var_type << " \t\t";
@@ -769,6 +803,9 @@ void show_vars(){
     cout << endl;
 }
 
+/**
+ * Add simple comments to the less intuitive commands.
+ */
 string add_comments(string text){
     string with_comments = "";
     istringstream iss(text);

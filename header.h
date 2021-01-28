@@ -10,18 +10,23 @@ using namespace std;
 *********************************************************************
 */
 
-// storing all required data for each variable
+/**
+ * Struct storing all required data for each variable.
+ */
 struct var {
-    var(): name(""), memmoryIndex(-1), initialized(false), iterator(false), var_type(integer), scope_start(-1), scope_end(-1) {}
+    var(): name(""), memoryIndex(-1), initialized(false), iterator(false), var_type(integer), scope_start(-1), scope_end(-1) {}
     public: string name;
-    public: long long memmoryIndex;
+    public: long long memoryIndex;
     public: bool initialized;
     public: bool iterator;
     public: enum { integer, array } var_type;
     public: int scope_start;
     public: int scope_end;
 };
-// returning type of used variable
+/**
+ * Struct storing information about variable, based on type.
+ * Returned by function variables.cc::check_var_type(string name)
+ */
 struct found_var_type {
     found_var_type(): v1(), v2(), number(-1) {}
     public: enum {
@@ -36,7 +41,7 @@ struct found_var_type {
 };
 
 extern vector<var> vars;
-extern long long memmoryIterator;
+extern long long memoryIterator;
 
 bool is_declared(string name);
 bool is_iterator(string name);
@@ -56,6 +61,10 @@ bool is_number(string& s);
 ****************************** errors *******************************
 *********************************************************************
 */
+
+/**
+ * Struct storing types of possible errors.
+ */
 enum errors {
     BadArrayScope,      // error 0
     AlreadyDeclaredVar, // error 1

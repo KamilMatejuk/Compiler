@@ -8,7 +8,6 @@ using namespace std;
 
 extern int yylineno;
 
-
 void yyerror(char const *s){
     if(s == "syntax error"){
         s = "Unrecognizable text";
@@ -17,7 +16,12 @@ void yyerror(char const *s){
     exit(-1);
 }
 
-
+/**
+ * Throw error message, based on error type.
+ * 
+ * @param e type fo error from errors enum.
+ * @param var name of variable, which caused error.
+ */
 void err(errors e, string var){
     string err = "";
     switch(e){

@@ -13,7 +13,7 @@ int yylex();
 %s IN_COMMENT
 %%
 <INITIAL>{
-    "["      { BEGIN(IN_COMMENT); }
+    "["             { BEGIN(IN_COMMENT); }
     [ \t\n]+        ;
 
     [_a-z]+         {
@@ -67,7 +67,7 @@ int yylex();
     "WRITE"         { return T_WRITE; };
 }
 <IN_COMMENT>{
-    "]"     { BEGIN(INITIAL); }
-    .       ;
+    "]"             { BEGIN(INITIAL); }
+    .               ;
 }
 %%
