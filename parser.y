@@ -185,11 +185,15 @@ command:
         $$ = ss.str();
     }
     | "FOR" iterator "FROM" value "TO" value "DO" commands "ENDFOR" { // działa
+        if($2 == $4 || $2 == $6){
+            err(errors::UninitializedVar, $2);
+        }
         // create var for end of scope 
         string iter_end = $6 + "_iter_end";
         iter_end.erase(remove(iter_end.begin(), iter_end.end(), '('), iter_end.end());
         iter_end.erase(remove(iter_end.begin(), iter_end.end(), ')'), iter_end.end());
         declare_variable_int(iter_end);
+        initialize_variable(iter_end);
         // useful lengths of blocks
         int commands_1_lines = number_of_commands($8);
         int var_1_lines = number_of_commands(get_variable_to_rejestr($2, 'b'));
@@ -231,11 +235,15 @@ command:
         $$ = ss.str();
     }
     | "FOR" iterator "FROM" value "DOWNTO" value "DO" commands "ENDFOR" { // działa
+        if($2 == $4 || $2 == $6){
+            err(errors::UninitializedVar, $2);
+        }
         // create var for end of scope 
         string iter_end = $6 + "_iter_end";
         iter_end.erase(remove(iter_end.begin(), iter_end.end(), '('), iter_end.end());
         iter_end.erase(remove(iter_end.begin(), iter_end.end(), ')'), iter_end.end());
         declare_variable_int(iter_end);
+        initialize_variable(iter_end);
         // useful lengths of blocks
         int commands_1_lines = number_of_commands($8);
         int var_1_lines = number_of_commands(get_variable_to_rejestr($2, 'b'));
@@ -352,7 +360,7 @@ expression: // returns on rejestr b
     }
     | value "/" value { // działa
         stringstream ss;
-        if($1 == $3){
+        if($1 == $3 && is_number($3) && $3 != "0"){
             ss << "RESET b \n";
             ss << "INC b \n";
         } else {
@@ -625,17 +633,29 @@ string get_variable_to_rejestr(string name, char rejestr){
             return create_constant_value(t.number, rejestr);
         }
         case found_var_type::VariableInteger: {
+            if(!is_initialized(t.v1.name)){
+                err(errors::UninitializedVar, t.v1.name);
+            }
             ss << create_constant_value(t.v1.memoryIndex, 'a') << "\n";
             ss << "LOAD " << rejestr << " a \n";
             return ss.str();
         }
         case found_var_type::VariableArrayWithNumericIndex: {
+            if(!is_initialized(t.v1.name)){
+                err(errors::UninitializedVar, t.v1.name);
+            }
             int n = t.v1.memoryIndex + t.number - t.v1.scope_start;
             ss << create_constant_value(n, 'a') << "\n";
             ss << "LOAD " << rejestr << " a \n";
             return ss.str();
         }
         case found_var_type::VariableArrayWithVariableIndex: {
+            if(!is_initialized(t.v1.name)){
+                err(errors::UninitializedVar, t.v1.name);
+            }
+            if(!is_initialized(t.v2.name)){
+                err(errors::UninitializedVar, t.v2.name);
+            }
             ss << create_constant_value(t.v2.memoryIndex, 'a') << "\n";
             ss << "LOAD " << rejestr << " a \n";
             ss << create_constant_value(t.v1.scope_start, 'a') << "\n";
